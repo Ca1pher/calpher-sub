@@ -1,0 +1,2 @@
+# 本地开发用 -- cp .dev.vars.example .dev.vars 并填入你的 admin UUID
+ADMIN_UUID=00000000-0000-0000-0000-000000000000

@@ -1,0 +1,15 @@
+{
+  "name": "calpher-sub",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Calpher 订阅管理 - 多用户 Clash/V2Ray 订阅编排与分发",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

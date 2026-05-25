@@ -1,0 +1,25 @@
+name = "calpher-sub"
+main = "src/index.js"
+compatibility_date = "2025-01-15"
+
+# 把 HTML 作为字符串导入到 worker bundle 中
+rules = [
+  { type = "Text", globs = ["**/*.html"], fallthrough = true }
+]
+
+# KV 命名空间 -- 部署前需创建:
+#   npx wrangler kv namespace create CALPHER_KV
+#   npx wrangler kv namespace create CALPHER_KV --preview
+# 然后把返回的 id / preview_id 填到下面
+[[kv_namespaces]]
+binding = "CALPHER_KV"
+id = "<your-namespace-id>"
+preview_id = "<your-preview-id>"
+
+# 初始管理员 UUID -- 通过 secret 或 vars 设置:
+#   npx wrangler secret put ADMIN_UUID
+# 或在下方明文填写(不推荐生产用):
+[vars]
+# ADMIN_UUID = "00000000-0000-0000-0000-000000000000"
+
+# 本地开发: 在 .dev.vars 文件里写 ADMIN_UUID=xxx
