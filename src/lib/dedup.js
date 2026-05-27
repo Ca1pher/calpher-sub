@@ -10,7 +10,24 @@ export function nodeFingerprint(n) {
         auth = (n.uuid || '').trim();
     } else if (t === 'ss' || t === 'shadowsocks') {
         auth = (n.cipher || '') + ':' + (n.pass || '');
+        // 机场常用一对 SS 2022 密钥, 靠 plugin-opts 的 host/path 切到不同后端,
+        // 不把它们算进 fingerprint 会被误合并(用户实测 18 个真不同节点收成 10 个)。
+        // 浏览器端 index.html nodeFingerprint 有同样实现, 修改时两边要同步。
+        if (n.plugin) {
+            let pluginHost = '', pluginPath = '';
+            for (const pair of String(n.pluginOpts || '').split(',')) {
+                const ci = pair.indexOf(':');
+                if (ci === -1) continue;
+                const k = pair.slice(0, ci).trim();
+                const v = pair.slice(ci + 1).trim().replace(/^['"]|['"]$/g, '');
+                if (k === 'host') pluginHost = v;
+                else if (k === 'path') pluginPath = v;
+            }
+            auth += '|' + n.plugin + '|' + pluginHost + '|' + pluginPath;
+        }
     } else if (t === 'trojan' || t === 'hysteria2' || t === 'hy2') {
+        auth = (n.pass || '');
+    } else if (t === 'anytls') {
         auth = (n.pass || '');
     } else if (t === 'socks' || t === 'socks5') {
         auth = (n.user || '') + ':' + (n.pass || '');
@@ -52,8 +69,19 @@ export function dedupConfigAgainstExisting(incoming, oldConfig, ownerUuid) {
         seenFp.add(fp);
         if (fpToOld.has(fp)) {
             const oldNode = fpToOld.get(fp);
-            // 用 incoming 的字段(可能有更新的端口/认证之外的细节),但保留 old 的 id+name
-            const merged = { ...inc, id: oldNode.id, name: oldNode.name };
+            // 区分两种命中场景:
+            //  A) inc.id === oldNode.id:用户就地编辑同一节点(可能只改了名字/sni/plugin等
+            //     不影响指纹的字段)。如果还把 name 覆写回旧值,用户的"改名"就保存失败了。
+            //  B) inc.id !== oldNode.id:重新 import 了同指纹节点,旧 id 已经在 groups 中
+            //     被引用,需要把 incoming 映射回 old 的 id+name,避免破坏分组引用和原名。
+            let merged;
+            if (inc.id === oldNode.id) {
+                merged = { ...inc };
+                console.info('[dedup] in-place edit fp=' + fp.slice(0, 32) + ' uuid=' + (ownerUuid || '?') + ' id=' + inc.id);
+            } else {
+                merged = { ...inc, id: oldNode.id, name: oldNode.name };
+                console.info('[dedup] reuse old fp=' + fp.slice(0, 32) + ' uuid=' + (ownerUuid || '?') + ' incId=' + inc.id + ' -> oldId=' + oldNode.id);
+            }
             idMap[inc.id] = oldNode.id;
             idMap[fp + '::first'] = oldNode.id;
             finalNodes.push(merged);

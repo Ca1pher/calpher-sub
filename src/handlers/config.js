@@ -67,8 +67,8 @@ export async function handleSaveConfig(ctx) {
         compiledYaml: rawSanitized.compiledYaml,
         updatedAt: Date.now(),
     };
-    if (sanitized.compiledYaml === undefined) {
-        // 保留旧的 compiledYaml
+    // compiledYaml 逻辑: 空字符串视为"未传",保留旧值;有内容则更新
+    if (!sanitized.compiledYaml && sanitized.compiledYaml !== '0') {
         if (old && old.compiledYaml) sanitized.compiledYaml = old.compiledYaml;
     }
 

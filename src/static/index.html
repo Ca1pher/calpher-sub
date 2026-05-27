@@ -13,6 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        /* ============================================================
+         * 设计令牌：浅色主题（默认）
+         * 暗色主题通过 [data-theme="dark"] 覆写
+         * ============================================================ */
         :root {
             --ink: #0b1220;
             --ink-soft: #1f2937;
@@ -20,7 +24,33 @@
             --paper-2: #f4f4f6;
             --line: #e6e7eb;
             --accent: #2f3340;
+
+            /* 滚动条 */
+            --sb-thumb: #d4d4d8;
+            --sb-thumb-hover: #a1a1aa;
+
+            /* 选区 */
+            --selection-bg: rgba(99, 102, 241, 0.18);
+            --selection-color: inherit;
         }
+
+        [data-theme="dark"] {
+            --ink: #eef0f6;
+            --ink-soft: #d6dbe8;
+            --paper: #0e1322;
+            --paper-2: #11182b;
+            --line: #2a3149;
+            --accent: #c7d2fe;
+
+            --sb-thumb: #2c3349;
+            --sb-thumb-hover: #3d465f;
+
+            --selection-bg: rgba(129, 140, 248, 0.32);
+            --selection-color: #f1f5f9;
+
+            color-scheme: dark;
+        }
+
         html, body {
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             font-feature-settings: "cv11", "ss01", "ss03";
@@ -34,22 +64,299 @@
               linear-gradient(180deg, #fbfbfd 0%, #f4f4f6 100%);
             background-attachment: fixed;
             min-height: 100vh;
+            transition: background-color .25s ease, color .25s ease;
         }
+        [data-theme="dark"] body {
+            background:
+              radial-gradient(1200px 600px at 100% -10%, rgba(99,102,241,0.12), transparent 60%),
+              radial-gradient(900px 500px at -10% 110%, rgba(16,185,129,0.06), transparent 60%),
+              linear-gradient(180deg, #0d1322 0%, #0a0f1d 100%);
+            background-attachment: fixed;
+        }
+
         code, pre, .font-mono {
             font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace !important;
             font-feature-settings: "calt" 0;
         }
         h1, h2, h3 { letter-spacing: -0.015em; }
-        /* 美化滚动条 */
+
+        /* 滚动条：跟随主题 */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
-        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; background-clip: content-box; border: 2px solid transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--sb-thumb); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--sb-thumb-hover); background-clip: content-box; border: 2px solid transparent; }
+        * { scrollbar-color: var(--sb-thumb) transparent; }
+
+        /* Firefox + 文本选区跟随主题 */
+        ::selection { background: var(--selection-bg); color: var(--selection-color); }
+
+        /* 隐藏滚动条工具类（group-tabs-bar 等） */
+        .no-scrollbar { scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
         /* 卡片柔光阴影 */
         .card-soft { box-shadow: 0 1px 0 rgba(15,23,42,0.04), 0 8px 24px -16px rgba(15,23,42,0.10); }
         /* tab 微动效 */
         .tab-btn { transition: all .18s ease; }
+
+        /* 主题切换按钮 */
+        #theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(255, 255, 255, 0.6);
+            color: #475569;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        #theme-toggle:hover { background: rgba(241, 245, 249, 0.95); color: #0f172a; }
+        [data-theme="dark"] #theme-toggle {
+            border-color: rgba(148, 163, 184, 0.18);
+            background: rgba(31, 37, 56, 0.65);
+            color: #cbd5e1;
+        }
+        [data-theme="dark"] #theme-toggle:hover { background: rgba(45, 52, 76, 0.85); color: #f1f5f9; }
+        /* 切换图标动画：用 CSS 显示/隐藏，避免 JS 直接改 className */
+        #theme-toggle .icon-sun { display: none; }
+        #theme-toggle .icon-moon { display: inline-block; }
+        [data-theme="dark"] #theme-toggle .icon-sun { display: inline-block; }
+        [data-theme="dark"] #theme-toggle .icon-moon { display: none; }
+
+        /* ============================================================
+         * 暗色主题：覆写常用 Tailwind 工具类
+         * 不修改现有 markup，全局生效
+         * ============================================================ */
+
+        /* —— 表面 / 卡片 —— */
+        [data-theme="dark"] .bg-white { background-color: #161b2c !important; }
+        [data-theme="dark"] .bg-white\/85 { background-color: rgba(20, 25, 41, 0.82) !important; }
+        [data-theme="dark"] .bg-white\/90 { background-color: rgba(20, 25, 41, 0.9) !important; }
+
+        /* slate 系（浅色面） */
+        [data-theme="dark"] .bg-slate-50 { background-color: #1c2238 !important; }
+        [data-theme="dark"] .bg-slate-100 { background-color: #232a42 !important; }
+        [data-theme="dark"] .bg-slate-100\/80 { background-color: rgba(35, 42, 66, 0.7) !important; }
+        [data-theme="dark"] .bg-slate-200 { background-color: #2a3149 !important; }
+
+        /* slate 系（已偏深，仅微调维持层级） */
+        [data-theme="dark"] .bg-slate-700 { background-color: #313a55 !important; }
+        [data-theme="dark"] .bg-slate-800 { background-color: #1a2036 !important; }
+        [data-theme="dark"] .bg-slate-900 { background-color: #11172a !important; }
+        [data-theme="dark"] .bg-slate-950 { background-color: #0a0f1d !important; }
+        [data-theme="dark"] .bg-slate-900\/70 { background-color: rgba(7, 11, 22, 0.78) !important; }
+        [data-theme="dark"] .bg-slate-900\/90 { background-color: rgba(7, 11, 22, 0.92) !important; }
+        [data-theme="dark"] .bg-black\/60 { background-color: rgba(2, 6, 16, 0.72) !important; }
+
+        /* hover 系 */
+        [data-theme="dark"] .hover\:bg-slate-50:hover { background-color: #232a42 !important; }
+        [data-theme="dark"] .hover\:bg-slate-100:hover { background-color: #2a3149 !important; }
+        [data-theme="dark"] .hover\:bg-slate-200:hover { background-color: #313a55 !important; }
+        [data-theme="dark"] .hover\:bg-slate-600:hover { background-color: #3d465f !important; }
+
+        /* —— 边框 —— */
+        [data-theme="dark"] .border-slate-100 { border-color: #232a42 !important; }
+        [data-theme="dark"] .border-slate-200 { border-color: #2a3149 !important; }
+        [data-theme="dark"] .border-slate-200\/70 { border-color: rgba(42, 49, 73, 0.65) !important; }
+        [data-theme="dark"] .border-slate-200\/80 { border-color: rgba(42, 49, 73, 0.78) !important; }
+        [data-theme="dark"] .border-slate-300 { border-color: #313a55 !important; }
+        [data-theme="dark"] .border-slate-800 { border-color: #1a2036 !important; }
+        [data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #232a42 !important; }
+
+        /* —— 文本 —— */
+        [data-theme="dark"] .text-slate-900 { color: #f1f4fa !important; }
+        [data-theme="dark"] .text-slate-800 { color: #e3e7f1 !important; }
+        [data-theme="dark"] .text-slate-700 { color: #cbd2e0 !important; }
+        [data-theme="dark"] .text-slate-600 { color: #aeb5c8 !important; }
+        [data-theme="dark"] .text-slate-500 { color: #8a93aa !important; }
+        [data-theme="dark"] .text-slate-400 { color: #6b7387 !important; }
+        [data-theme="dark"] .text-slate-300 { color: #4d556a !important; }
+        [data-theme="dark"] .hover\:text-slate-900:hover { color: #f1f4fa !important; }
+        [data-theme="dark"] .hover\:text-slate-600:hover { color: #aeb5c8 !important; }
+
+        /* ring 在暗色下用更柔的色块 */
+        [data-theme="dark"] .ring-white { --tw-ring-color: rgba(15, 23, 42, 0.85) !important; }
+
+        /* —— 染色背景（带功能色调的浅块）—— */
+        [data-theme="dark"] .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.14) !important; }
+        [data-theme="dark"] .bg-indigo-100 { background-color: rgba(99, 102, 241, 0.22) !important; }
+        [data-theme="dark"] .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.13) !important; }
+        [data-theme="dark"] .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.20) !important; }
+        [data-theme="dark"] .bg-amber-50 { background-color: rgba(245, 158, 11, 0.13) !important; }
+        [data-theme="dark"] .bg-amber-100 { background-color: rgba(245, 158, 11, 0.20) !important; }
+        [data-theme="dark"] .bg-rose-50 { background-color: rgba(244, 63, 94, 0.13) !important; }
+        [data-theme="dark"] .bg-rose-100 { background-color: rgba(244, 63, 94, 0.20) !important; }
+        [data-theme="dark"] .bg-sky-50 { background-color: rgba(14, 165, 233, 0.13) !important; }
+        [data-theme="dark"] .bg-sky-100 { background-color: rgba(14, 165, 233, 0.20) !important; }
+        [data-theme="dark"] .bg-purple-50 { background-color: rgba(168, 85, 247, 0.13) !important; }
+        [data-theme="dark"] .bg-purple-100 { background-color: rgba(168, 85, 247, 0.20) !important; }
+
+        [data-theme="dark"] .hover\:bg-indigo-50:hover { background-color: rgba(99, 102, 241, 0.18) !important; }
+        [data-theme="dark"] .hover\:bg-indigo-100:hover { background-color: rgba(99, 102, 241, 0.26) !important; }
+        [data-theme="dark"] .hover\:bg-emerald-100:hover { background-color: rgba(16, 185, 129, 0.26) !important; }
+        [data-theme="dark"] .hover\:bg-amber-100:hover { background-color: rgba(245, 158, 11, 0.26) !important; }
+        [data-theme="dark"] .hover\:bg-rose-50:hover { background-color: rgba(244, 63, 94, 0.18) !important; }
+        [data-theme="dark"] .hover\:bg-rose-100:hover { background-color: rgba(244, 63, 94, 0.26) !important; }
+
+        /* —— 染色边框 —— */
+        [data-theme="dark"] .border-indigo-100 { border-color: rgba(99, 102, 241, 0.30) !important; }
+        [data-theme="dark"] .border-indigo-200 { border-color: rgba(99, 102, 241, 0.42) !important; }
+        [data-theme="dark"] .border-indigo-300 { border-color: rgba(99, 102, 241, 0.55) !important; }
+        [data-theme="dark"] .border-emerald-100 { border-color: rgba(16, 185, 129, 0.30) !important; }
+        [data-theme="dark"] .border-emerald-200 { border-color: rgba(16, 185, 129, 0.42) !important; }
+        [data-theme="dark"] .border-amber-100 { border-color: rgba(245, 158, 11, 0.30) !important; }
+        [data-theme="dark"] .border-amber-200 { border-color: rgba(245, 158, 11, 0.42) !important; }
+        [data-theme="dark"] .border-rose-100 { border-color: rgba(244, 63, 94, 0.30) !important; }
+        [data-theme="dark"] .border-rose-200 { border-color: rgba(244, 63, 94, 0.42) !important; }
+
+        /* —— 染色文本（深色调上调亮度）—— */
+        [data-theme="dark"] .text-indigo-400 { color: #a5b4fc !important; }
+        [data-theme="dark"] .text-indigo-500 { color: #a5b4fc !important; }
+        [data-theme="dark"] .text-indigo-600 { color: #a5b4fc !important; }
+        [data-theme="dark"] .text-indigo-700 { color: #c7d2fe !important; }
+        [data-theme="dark"] .text-indigo-800 { color: #c7d2fe !important; }
+        [data-theme="dark"] .text-indigo-900 { color: #e0e7ff !important; }
+        [data-theme="dark"] .text-emerald-400 { color: #6ee7b7 !important; }
+        [data-theme="dark"] .text-emerald-500 { color: #6ee7b7 !important; }
+        [data-theme="dark"] .text-emerald-600 { color: #6ee7b7 !important; }
+        [data-theme="dark"] .text-emerald-700 { color: #a7f3d0 !important; }
+        [data-theme="dark"] .text-amber-500 { color: #fbbf24 !important; }
+        [data-theme="dark"] .text-amber-600 { color: #fcd34d !important; }
+        [data-theme="dark"] .text-amber-700 { color: #fde68a !important; }
+        [data-theme="dark"] .text-amber-800 { color: #fde68a !important; }
+        [data-theme="dark"] .text-rose-500 { color: #fda4af !important; }
+        [data-theme="dark"] .text-rose-600 { color: #fda4af !important; }
+        [data-theme="dark"] .text-rose-700 { color: #fecdd3 !important; }
+        [data-theme="dark"] .text-rose-300 { color: #fda4af !important; }
+        [data-theme="dark"] .text-sky-500 { color: #7dd3fc !important; }
+        [data-theme="dark"] .text-sky-600 { color: #7dd3fc !important; }
+        [data-theme="dark"] .text-sky-700 { color: #bae6fd !important; }
+        [data-theme="dark"] .text-purple-600 { color: #d8b4fe !important; }
+        [data-theme="dark"] .text-purple-700 { color: #e9d5ff !important; }
+
+        /* —— 实色按钮 hover 在暗色下保持高对比 —— */
+        [data-theme="dark"] .hover\:bg-indigo-500:hover { background-color: #6366f1 !important; }
+        [data-theme="dark"] .hover\:bg-indigo-700:hover { background-color: #4f46e5 !important; }
+
+        /* —— 投影：在暗色下移除浅色着色阴影，避免泛白圈 —— */
+        [data-theme="dark"] .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.35) !important; }
+        [data-theme="dark"] .shadow-md { box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.45) !important; }
+        [data-theme="dark"] .shadow-xl { box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.6) !important; }
+        [data-theme="dark"] .shadow-2xl { box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.7) !important; }
+        [data-theme="dark"] .shadow-indigo-100 { --tw-shadow-color: rgba(99, 102, 241, 0.25) !important; }
+        [data-theme="dark"] .shadow-emerald-100 { --tw-shadow-color: rgba(16, 185, 129, 0.22) !important; }
+
+        /* —— 表单元素 —— */
+        [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { color: var(--ink); color-scheme: dark; }
+        [data-theme="dark"] input::placeholder, [data-theme="dark"] textarea::placeholder { color: #6b7387; opacity: 1; }
+        [data-theme="dark"] input:focus, [data-theme="dark"] select:focus, [data-theme="dark"] textarea:focus { outline: none; }
+
+        /* —— 拓扑容器：暗色下加柔和层叠提示 —— */
+        [data-theme="dark"] #topology-container { box-shadow: inset 0 0 0 1px rgba(148,163,184,0.04); }
+
+        /* ============================================================
+         * 移动端响应式增强（≤ 768px / ≤ 640px / ≤ 480px）
+         * 维持桌面布局，渐进收紧 padding、字号、按钮、表格
+         * ============================================================ */
+
+        @media (max-width: 768px) {
+            /* 顶部 header：紧凑 */
+            header > div { padding-left: 12px; padding-right: 12px; padding-top: 10px; padding-bottom: 10px; row-gap: 10px; }
+            header > div > div:last-child { flex-wrap: wrap; gap: 8px; }
+
+            /* 主区域：减少 padding */
+            main { padding: 12px !important; }
+            main.space-y-4 > * + *, main .space-y-4 > * + * { margin-top: 12px !important; }
+
+            /* 工具栏按钮：自适应换行已存在，仅紧凑文字 */
+            main .bg-white.rounded-xl.p-3.flex.flex-wrap button { font-size: 11px; padding-left: 10px; padding-right: 10px; padding-top: 7px; padding-bottom: 7px; }
+
+            /* 主表格卡片：固定高度调整为流式 */
+            .h-\[600px\] { height: auto !important; min-height: 420px; max-height: 70vh; }
+
+            /* 拓扑预览：右栏在窄屏会上下排，提供合理 min-height */
+            #topology-container { min-height: 160px; max-height: 320px; }
+
+            /* 输出 yaml 预览 */
+            #output-yaml-box { max-height: 60vh !important; font-size: 10.5px !important; padding: 12px !important; }
+
+            /* 弹窗 */
+            #import-modal > div, #manual-modal > div, #group-modal > div, #share-export-modal > div, #create-user-modal > div, #login-modal > div, #qr-modal > div, #custom-dialog > div {
+                max-height: calc(100vh - 24px);
+                padding: 16px !important;
+            }
+
+            /* 表格紧凑 */
+            table th, table td { padding-left: 10px !important; padding-right: 10px !important; padding-top: 8px !important; padding-bottom: 8px !important; }
+
+            /* 用户管理表：允许横滚而不挤压 */
+            #tab-admin-workspace .overflow-x-auto table { min-width: 640px; }
+
+            /* 系统命名 4 栏：已是 grid-cols-1 md:grid-cols-4，移动端单列。无需额外处理 */
+
+            /* 字号收敛 */
+            .text-xs { font-size: 11.5px !important; }
+
+            /* 右键菜单：避免溢出屏幕 */
+            #node-context-menu { max-width: 220px; }
+        }
+
+        @media (max-width: 640px) {
+            /* 顶部 tab 按钮：图标+短文本 */
+            #btn-client-workspace, #btn-cloud-workspace, #btn-admin-workspace {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+            /* 用户信息区：必要时换行 */
+            #header-user-info { flex-wrap: wrap; }
+            #header-user-info span:nth-child(2) { max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+            /* 工具栏：清空按钮回到行内不挤 */
+            main .bg-white.rounded-xl.p-3.flex.flex-wrap > button.ml-auto { margin-left: 0 !important; }
+
+            /* 我的订阅：左右两栏在窄屏改单列已自动；输入+按钮保持横排 */
+            #sub-url-clash, #sub-url-v2ray { font-size: 10.5px !important; }
+        }
+
+        @media (max-width: 480px) {
+            /* 头部品牌区缩 */
+            header h1 { font-size: 14px !important; }
+            header p { display: none; } /* 标语在超窄屏隐藏 */
+
+            /* tab：纯图标 + 隐藏标签文本（在 .tab-label 上） */
+            .tab-btn .tab-label { display: none; }
+            .tab-btn > i { margin-right: 0 !important; }
+            .tab-btn { padding-left: 9px !important; padding-right: 9px !important; }
+
+            /* 顶栏 logo 缩 */
+            header .w-9.h-9 { width: 32px; height: 32px; }
+
+            /* footer 紧凑 */
+            footer { padding-top: 18px; padding-bottom: 18px; }
+        }
+
+        /* 触摸设备：表格行选中态需要更明显 */
+        @media (hover: none) {
+            tr.cursor-pointer:active { background-color: rgba(99, 102, 241, 0.10); }
+        }
     </style>
+    <script>
+        // FOUC 预防：在 <body> 渲染前同步设置主题
+        (function applyInitialTheme() {
+            try {
+                const saved = localStorage.getItem('calpher.theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
+                if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                console.info('[theme] initial=' + theme + ' (saved=' + saved + ', prefersDark=' + prefersDark + ')');
+            } catch (e) {
+                console.warn('[theme] initial detection failed', e);
+            }
+        })();
+    </script>
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen">
 
@@ -64,7 +371,7 @@
                 <div>
                     <h1 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
                         Calpher 订阅管理
-                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.1</span>
+                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.2</span>
                     </h1>
                     <p class="text-[11px] text-slate-500 mt-0.5">多用户 Clash / V2Ray / 小火箭 订阅编排与分发</p>
                 </div>
@@ -78,15 +385,19 @@
                     <span id="header-user-role" class="text-[10px] bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200"></span>
                     <button onclick="doLogout()" class="text-slate-400 hover:text-rose-500 ml-1" title="退出登录"><i class="fa-solid fa-right-from-bracket"></i></button>
                 </div>
+                <button id="theme-toggle" type="button" onclick="toggleTheme()" title="切换日间 / 夜间模式" aria-label="切换主题">
+                    <i class="fa-solid fa-moon icon-moon text-[13px]"></i>
+                    <i class="fa-solid fa-sun icon-sun text-[13px]"></i>
+                </button>
                 <div class="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
                     <button onclick="switchTab('client-workspace')" id="btn-client-workspace" class="tab-btn active px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm">
-                        <i class="fa-solid fa-laptop-code mr-1 text-slate-500"></i> 编排工作区
+                        <i class="fa-solid fa-laptop-code mr-1 text-slate-500"></i><span class="tab-label">编排工作区</span>
                     </button>
                     <button onclick="switchTab('cloud-workspace')" id="btn-cloud-workspace" class="tab-btn px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">
-                        <i class="fa-solid fa-link mr-1"></i> 我的订阅
+                        <i class="fa-solid fa-link mr-1"></i><span class="tab-label">我的订阅</span>
                     </button>
                     <button onclick="switchTab('admin-workspace')" id="btn-admin-workspace" class="tab-btn px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 hidden">
-                        <i class="fa-solid fa-users-gear mr-1"></i> 用户管理
+                        <i class="fa-solid fa-users-gear mr-1"></i><span class="tab-label">用户管理</span>
                     </button>
                 </div>
             </div>
@@ -152,6 +463,7 @@
                             <table class="w-full text-left border-collapse">
                                 <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                     <tr class="text-[10px] uppercase font-semibold text-slate-500 tracking-wider">
+                                        <th class="px-4 py-2.5 w-12 text-center" title="拖拽调整排序"><i class="fa-solid fa-sort"></i></th>
                                         <th class="px-4 py-2.5 w-16 text-center">序号</th>
                                         <th class="px-4 py-2.5 w-24">协议</th>
                                         <th class="px-4 py-2.5">别名 (备注)</th>
@@ -554,6 +866,7 @@
                         <option value="ss">Shadowsocks</option>
                         <option value="trojan">Trojan</option>
                         <option value="hysteria2">Hysteria2</option>
+                        <option value="anytls">AnyTLS</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
@@ -611,12 +924,21 @@
                             <select id="man-ss-cipher" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
                                 <option value="aes-256-gcm">aes-256-gcm</option>
                                 <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+                                <option value="none">none (with plugin)</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-500 mb-1">加密密码</label>
                             <input type="password" id="man-ss-pass" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="密码">
                         </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">插件 (可选, e.g. v2ray-plugin / obfs-local)</label>
+                        <input type="text" id="man-ss-plugin" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="v2ray-plugin">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">插件选项 (flow 形式, e.g. mode: websocket, host: ..., path: /, tls: true, mux: false)</label>
+                        <textarea id="man-ss-plugin-opts" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[11px] font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none" placeholder="mode: websocket, host: example.com, path: /, tls: true, mux: false"></textarea>
                     </div>
                 </div>
 
@@ -644,6 +966,47 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-500 mb-1">SNI / 域名校验</label>
                             <input type="text" id="man-hy2-sni" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="example.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 动态凭证字段 AnyTLS -->
+                <div id="man-anytls-fields" class="space-y-2 hidden">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">认证密码 (Password)</label>
+                            <input type="password" id="man-anytls-pass" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="AnyTLS Password">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">SNI / 域名校验</label>
+                            <input type="text" id="man-anytls-sni" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="example.com">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">客户端指纹</label>
+                            <select id="man-anytls-fingerprint" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                                <option value="">(不指定)</option>
+                                <option value="chrome">chrome</option>
+                                <option value="firefox">firefox</option>
+                                <option value="safari">safari</option>
+                                <option value="ios">ios</option>
+                                <option value="android">android</option>
+                                <option value="edge">edge</option>
+                                <option value="random">random</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                                <input type="checkbox" id="man-anytls-udp" class="w-3.5 h-3.5">
+                                <span>UDP 中继</span>
+                            </label>
+                        </div>
+                        <div class="flex items-end">
+                            <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                                <input type="checkbox" id="man-anytls-skip-cert" class="w-3.5 h-3.5">
+                                <span>跳过证书校验</span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -868,6 +1231,39 @@
 
     <!-- ================= JAVASCRIPT ================= -->
     <script>
+        // ================= 主题切换（日间 / 夜间） =================
+        function toggleTheme() {
+            const root = document.documentElement;
+            const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            if (next === 'dark') root.setAttribute('data-theme', 'dark');
+            else root.removeAttribute('data-theme');
+            try {
+                localStorage.setItem('calpher.theme', next);
+            } catch (e) {
+                console.warn('[theme] persist failed', e);
+            }
+            console.info('[theme] toggle ' + current + ' -> ' + next);
+        }
+
+        // 跟随系统切换：仅在用户未手动设过偏好时生效
+        if (window.matchMedia) {
+            try {
+                const mq = window.matchMedia('(prefers-color-scheme: dark)');
+                const onChange = (e) => {
+                    const saved = localStorage.getItem('calpher.theme');
+                    if (saved === 'dark' || saved === 'light') return;
+                    if (e.matches) document.documentElement.setAttribute('data-theme', 'dark');
+                    else document.documentElement.removeAttribute('data-theme');
+                    console.info('[theme] system pref changed -> ' + (e.matches ? 'dark' : 'light'));
+                };
+                if (mq.addEventListener) mq.addEventListener('change', onChange);
+                else if (mq.addListener) mq.addListener(onChange);
+            } catch (e) {
+                console.warn('[theme] system listener failed', e);
+            }
+        }
+
         let nodes = [];
         let groups = [];
         let compiledYaml = "";
@@ -1131,14 +1527,17 @@
                 else if (node.type === 'ss') badgeClass = "bg-amber-50 text-amber-700 border border-amber-200";
                 else if (node.type === 'trojan') badgeClass = "bg-rose-50 text-rose-700 border border-rose-200";
                 else if (node.type === 'hysteria2' || node.type === 'hy2') badgeClass = "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200";
+                else if (node.type === 'anytls') badgeClass = "bg-sky-50 text-sky-700 border border-sky-200";
 
                 const isSelected = selectedNodeIds.includes(node.id);
                 const tr = document.createElement('tr');
                 tr.dataset.nodeId = node.id;
                 tr.dataset.idx = idx;
+                tr.draggable = true;
                 tr.className = "cursor-pointer transition-colors select-none " + (isSelected ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50");
-                tr.title = '单击=选中  双击=编辑  右键=菜单  Ctrl+C=复制分享链接  Delete=删除';
+                tr.title = '单击=选中  双击=编辑  右键=菜单  Ctrl+C=复制分享链接  Delete=删除  拖拽=调整排序';
                 tr.innerHTML = `
+                    <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400"><i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab"></i></td>
                     <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400">${idx + 1}</td>
                     <td class="px-4 py-2.5 font-semibold">
                         <span class="px-2 py-0.5 rounded text-[10px] font-mono ${badgeClass}">${node.type.toUpperCase()}</span>
@@ -1315,7 +1714,105 @@
             const total = filteredNodes.length;
             bar.innerHTML = selCount > 0
                 ? `已选 <strong class="text-indigo-600">${selCount}</strong> / ${total} 个节点  ·  <span class="text-slate-400">Delete=删除 · Ctrl/⌘+C=复制分享链接 · Ctrl/⌘+A=全选 · Esc=取消</span>`
-                : `共 ${total} 个节点  ·  <span class="text-slate-400">单击选中 · 双击编辑 · 右键菜单</span>`;
+                : `共 ${total} 个节点  ·  <span class="text-slate-400">单击选中 · 双击编辑 · 右键菜单 · 拖拽排序</span>`;
+        }
+
+        // ================= 节点拖拽排序 =================
+        let dragSrcNodeId = null;
+
+        function setupTableDragDrop() {
+            const tableBody = document.getElementById('node-table-body');
+            if (!tableBody) return;
+
+            // 避免重复绑定
+            if (tableBody.dataset.dragBound) return;
+            tableBody.dataset.dragBound = '1';
+
+            tableBody.addEventListener('dragstart', (e) => {
+                const tr = e.target.closest('tr');
+                if (!tr) return;
+                dragSrcNodeId = tr.dataset.nodeId;
+                tr.classList.add('opacity-50');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            tableBody.addEventListener('dragend', (e) => {
+                const tr = e.target.closest('tr');
+                if (tr) tr.classList.remove('opacity-50', 'bg-indigo-100');
+                dragSrcNodeId = null;
+                // 移除所有 drop indicator
+                tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('border-t-2', 'border-indigo-400'));
+            });
+
+            tableBody.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const tr = e.target.closest('tr');
+                if (!tr || tr.dataset.nodeId === dragSrcNodeId) return;
+
+                // 移除其他 indicator
+                tableBody.querySelectorAll('tr').forEach(r => {
+                    if (r !== tr) r.classList.remove('border-t-2', 'border-indigo-400');
+                });
+                // 如果拖拽的是当前行，不显示 indicator
+                if (tr.dataset.nodeId !== dragSrcNodeId) {
+                    tr.classList.add('border-t-2', 'border-indigo-400');
+                }
+            });
+
+            tableBody.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const tr = e.target.closest('tr');
+                if (!tr || !dragSrcNodeId) return;
+                const targetNodeId = tr.dataset.nodeId;
+                if (targetNodeId === dragSrcNodeId) return;
+
+                // 根据鼠标在目标行中的位置决定插入方向：上半部分=之前，下半部分=之后
+                const rect = tr.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                const isBefore = e.clientY < midY;
+
+                // 排序：物理节点列表 + 分组内顺序
+                reorderNodes(dragSrcNodeId, targetNodeId, isBefore);
+                renderNodesTable();
+            });
+
+            tableBody.addEventListener('dragleave', (e) => {
+                // 只在真正离开 table 时清除 indicator
+                if (!tableBody.contains(e.relatedTarget)) {
+                    tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('border-t-2', 'border-indigo-400'));
+                }
+            });
+        }
+
+        // 核心排序逻辑：在 nodes[] 和各分组中移动节点
+        // srcId 移动到 tgtId 之前(isBefore=true)或之后(isBefore=false)
+        function reorderNodes(srcId, tgtId, isBefore) {
+            // 1. 从 nodes[] 中移除并插入到目标位置
+            const srcIdx = nodes.findIndex(n => n.id === srcId);
+            const tgtIdx = nodes.findIndex(n => n.id === tgtId);
+            if (srcIdx === -1 || tgtIdx === -1) return;
+
+            const [moved] = nodes.splice(srcIdx, 1);
+            const newTgtIdx = nodes.findIndex(n => n.id === tgtId);
+            if (isBefore) {
+                nodes.splice(newTgtIdx, 0, moved);
+            } else {
+                nodes.splice(newTgtIdx + 1, 0, moved);
+            }
+
+            // 2. 从各分组中同步调整顺序
+            groups.forEach(g => {
+                if (!Array.isArray(g.nodes) || !g.nodes.includes(srcId)) return;
+                const gSrcIdx = g.nodes.indexOf(srcId);
+                g.nodes.splice(gSrcIdx, 1);
+                const gTgtIdx = g.nodes.indexOf(tgtId);
+                if (isBefore) {
+                    g.nodes.splice(gTgtIdx, 0, srcId);
+                } else {
+                    g.nodes.splice(gTgtIdx + 1, 0, srcId);
+                }
+            });
         }
 
         function renderGroupsBoard() {
@@ -1436,9 +1933,9 @@
                 txt.placeholder = "socks5://your-username@1.2.3.4:1080#示例住宅节点\nvmess://eyJ2IjoiMiIsImFkZCI6IjEuMi4zLjQiLCJwb3J0IjoiNDQzIiwiaWQiOiJ4eHh4eHh4eC14eHh4LXh4eHgteHh4eC14eHh4eHh4eHh4eHgiLCJwcyI6IuekuuS+iy1ISy0wMSJ9";
                 targetGroupWrapper.classList.remove('hidden');
             } else if (tab === 'clash') {
-                desc.innerHTML = `直接粘贴本地的 <strong>Clash YAML 完整配置文件</strong>。系统在录入物理代理时，还能智能反向推断并还原其原生的 <code class="bg-slate-100 text-indigo-600 px-1 py-0.5 rounded font-semibold text-[10px]">proxy-groups</code> 编排结构！`;
+                desc.innerHTML = `直接粘贴本地的 <strong>Clash YAML 完整配置文件</strong>。系统在录入物理代理时，还能智能反向推断并还原其原生的 <code class="bg-slate-100 text-indigo-600 px-1 py-0.5 rounded font-semibold text-[10px]">proxy-groups</code> 编排结构！<br><span class="text-amber-600 mt-1 block">提示：选择分组可将所有节点追加到该组</span>`;
                 txt.placeholder = "proxies:\n  - name: \"住宅代理-US-01\"\n    type: socks5\n    server: 1.2.3.4\n    port: 1080\n    username: \"your-username\"\n\nproxy-groups:\n  - name: \"🔰 编排组-住宅\"\n    type: select\n    proxies:\n      - \"住宅代理-US-01\"";
-                targetGroupWrapper.classList.add('hidden'); // Clash 内置编排直接自动加载
+                targetGroupWrapper.classList.remove('hidden'); // YAML 可选分组
             } else if (tab === 'v2ray') {
                 desc.innerHTML = `粘贴标准的 <strong>V2Ray 客户端 JSON 配置文件</strong>（支持识别整体客户端配置中的 <code class="bg-slate-100 text-indigo-600 px-1 py-0.5 rounded font-semibold text-[10px]">outbounds</code> 物理节点数组），一键反向转换为本地负载。`;
                 txt.placeholder = "{\n  \"outbounds\": [\n    {\n      \"protocol\": \"vmess\",\n      \"settings\": {\n        \"vnext\": [\n          {\n            \"address\": \"1.2.3.4\",\n            \"port\": 443,\n            \"users\": [{ \"id\": \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\" }]\n          }\n        ]\n      },\n      \"tag\": \"HK-VMess-Node\"\n    }\n  ]\n}";
@@ -1497,12 +1994,20 @@
             } else if (n.type === 'ss' || n.type === 'shadowsocks') {
                 document.getElementById('man-ss-cipher').value = n.cipher || 'aes-256-gcm';
                 document.getElementById('man-ss-pass').value = n.pass || '';
+                document.getElementById('man-ss-plugin').value = n.plugin || '';
+                document.getElementById('man-ss-plugin-opts').value = n.pluginOpts || '';
             } else if (n.type === 'trojan') {
                 document.getElementById('man-trojan-pass').value = n.pass || '';
                 document.getElementById('man-trojan-sni').value = n.sni || '';
             } else if (n.type === 'hysteria2' || n.type === 'hy2') {
                 document.getElementById('man-hy2-pass').value = n.pass || '';
                 document.getElementById('man-hy2-sni').value = n.sni || '';
+            } else if (n.type === 'anytls') {
+                document.getElementById('man-anytls-pass').value = n.pass || '';
+                document.getElementById('man-anytls-sni').value = n.sni || '';
+                document.getElementById('man-anytls-fingerprint').value = n.clientFingerprint || '';
+                document.getElementById('man-anytls-udp').checked = !!n.udp;
+                document.getElementById('man-anytls-skip-cert').checked = !!n.skipCertVerify;
             }
         }
         function closeManualModal() {
@@ -1749,6 +2254,8 @@
                 document.getElementById('man-trojan-fields').classList.remove('hidden');
             } else if (type === 'hysteria2') {
                 document.getElementById('man-hy2-fields').classList.remove('hidden');
+            } else if (type === 'anytls') {
+                document.getElementById('man-anytls-fields').classList.remove('hidden');
             }
         }
 
@@ -1808,7 +2315,23 @@
                 auth = (n.uuid || '').trim();
             } else if (t === 'ss' || t === 'shadowsocks') {
                 auth = (n.cipher || '') + ':' + (n.pass || '');
+                // 机场常用一对 SS 2022 密钥, 靠 plugin-opts 的 host/path 切到不同后端,
+                // 不把它们算进 fingerprint 会被误合并 (用户实测 18 个真不同节点收成 10 个)
+                if (n.plugin) {
+                    let pluginHost = '', pluginPath = '';
+                    for (const pair of String(n.pluginOpts || '').split(',')) {
+                        const ci = pair.indexOf(':');
+                        if (ci === -1) continue;
+                        const k = pair.slice(0, ci).trim();
+                        const v = pair.slice(ci + 1).trim().replace(/^['"]|['"]$/g, '');
+                        if (k === 'host') pluginHost = v;
+                        else if (k === 'path') pluginPath = v;
+                    }
+                    auth += '|' + n.plugin + '|' + pluginHost + '|' + pluginPath;
+                }
             } else if (t === 'trojan' || t === 'hysteria2' || t === 'hy2') {
+                auth = (n.pass || '');
+            } else if (t === 'anytls') {
                 auth = (n.pass || '');
             } else if (t === 'socks' || t === 'socks5') {
                 auth = (n.user || '') + ':' + (n.pass || '');
@@ -1837,16 +2360,34 @@
             const appendedNodes = [];
             const finalIds = [];
             const seenIncoming = new Set();
+            const dupNames = []; // 记录去重的节点名
             let dupCount = 0;
             (incomingNodes || []).forEach(inc => {
                 const fp = nodeFingerprint(inc);
                 if (!fp) return;
                 if (fpMap.has(fp)) {
                     const existing = fpMap.get(fp);
+                    // 只补充 existing 缺失的字段, 不覆盖用户已有的自定义(name/sni 等)。
+                    // 历史 bug: 之前 dedup 命中后完全丢弃 incoming, 导致重新 import 时
+                    // 新增的 plugin / pluginOpts / ws-opts 这种"旧节点没有"的字段补不进来,
+                    // 用户体感就是"分享链接导入回来后参数全没了"。
+                    let merged = 0;
+                    for (const k of Object.keys(inc)) {
+                        if (k === 'id' || k === 'name') continue;
+                        const ev = existing[k];
+                        if (ev === undefined || ev === null || ev === '') {
+                            existing[k] = inc[k];
+                            merged++;
+                        }
+                    }
+                    if (merged > 0) {
+                        console.info('[dedup] fp-hit fill missing fields existingId=' + existing.id + ' added=' + merged);
+                    }
                     idMap[inc.id] = existing.id;
                     if (!seenIncoming.has(existing.id)) {
                         finalIds.push(existing.id);
                         seenIncoming.add(existing.id);
+                        dupNames.push(existing.name || inc.name || '未知节点');
                     }
                     dupCount++;
                 } else {
@@ -1860,7 +2401,7 @@
                 }
             });
             console.info('[dedup] incoming=' + (incomingNodes || []).length + ' appended=' + appendedNodes.length + ' reused=' + dupCount);
-            return { appendedNodes, finalIds, idMap, dupCount };
+            return { appendedNodes, finalIds, idMap, dupCount, dupNames };
         }
 
         // ================= Unified Router for Submission Import Tab =================
@@ -2016,14 +2557,46 @@
                         const decodedUser = safeAtob(credentials) || credentials;
                         let cipher = "aes-256-gcm";
                         let pass = "";
-                        if (decodedUser.includes(':')) {
-                            const ssParts = decodedUser.split(':');
-                            cipher = ssParts[0];
-                            pass = ssParts[1] || "";
+                        // SS 2022 协议(2022-blake3-aes-128-gcm 等)的 password 本身可能含 ':'
+                        // (格式 "psk:identity-key", 两段 base64 中间一个冒号),所以只切第一个 ':'
+                        // 之前 split(':')[1] 会把 password 截成两半 -> 客户端连不上 + dedup 误合并
+                        const firstColon = decodedUser.indexOf(':');
+                        if (firstColon !== -1) {
+                            cipher = decodedUser.substring(0, firstColon);
+                            pass = decodedUser.substring(firstColon + 1);
                         } else {
                             pass = decodedUser;
                         }
-                        incoming.push({
+                        // SIP002: ?plugin=v2ray-plugin;mode=websocket;host=...;path=/...;tls;mux=0
+                        // URLSearchParams 已自动 decodeURIComponent 一次, 拿到的就是分号分隔的原文
+                        // 必须还原回节点对象的 plugin / pluginOpts(逗号分隔 "k: v"),
+                        // 否则后续 export clash yaml 时丢 plugin 行 (页面 1 -> 链接 -> 页面 2 来回丢失)
+                        let pluginName = '';
+                        let pluginOpts = '';
+                        const rawPluginParam = queryParams.get('plugin') || '';
+                        if (rawPluginParam) {
+                            const segs = rawPluginParam.split(';');
+                            pluginName = (segs[0] || '').trim();
+                            const optPairs = [];
+                            for (let i = 1; i < segs.length; i++) {
+                                const seg = segs[i].trim();
+                                if (!seg) continue;
+                                const eqIdx = seg.indexOf('=');
+                                if (eqIdx === -1) {
+                                    // 裸 flag: "tls" -> "tls: true"
+                                    optPairs.push(seg + ': true');
+                                } else {
+                                    const k = seg.slice(0, eqIdx).trim();
+                                    const v = seg.slice(eqIdx + 1).trim();
+                                    // mux=0 是 v2ray-plugin 关 mux 的写法, 还原成 mux: false
+                                    if (k === 'mux' && v === '0') optPairs.push('mux: false');
+                                    else optPairs.push(k + ': ' + v);
+                                }
+                            }
+                            pluginOpts = optPairs.join(', ');
+                            console.info('[share-import] ss plugin restored remark=' + remark + ' plugin=' + pluginName + ' optsCount=' + optPairs.length);
+                        }
+                        const ssNode = {
                             id: nid,
                             name: remark,
                             type: 'ss',
@@ -2031,7 +2604,12 @@
                             port: parseInt(port) || 8388,
                             cipher: cipher,
                             pass: pass
-                        });
+                        };
+                        if (pluginName) {
+                            ssNode.plugin = pluginName;
+                            if (pluginOpts) ssNode.pluginOpts = pluginOpts;
+                        }
+                        incoming.push(ssNode);
                         parsedCount++;
                     }
                     else if (scheme === 'trojan') {
@@ -2094,10 +2672,16 @@
                 showCustomAlert('未解析到节点', '请检查链接格式,目前支持 vmess/vless/ss/trojan/hysteria2/socks5。');
                 return;
             }
+            const dupMsg = dedup.dupCount > 0
+                ? ` + 跳过 ${dedup.dupCount} 个重复节点`
+                : '';
             const msg = dedup.dupCount > 0
-                ? `解析 ${parsedCount} 条链接:新增 ${dedup.appendedNodes.length} 个,复用 ${dedup.dupCount} 个已有节点(保留原名)`
+                ? `解析 ${parsedCount} 条链接:新增 ${dedup.appendedNodes.length} 个,复用 ${dedup.dupCount} 个已有节点(保留原名)${dupMsg}`
                 : `成功解析并分配 ${parsedCount} 个分享链接代理`;
             showToast(msg);
+            if (dedup.dupNames && dedup.dupNames.length > 0) {
+                console.info('[dedup] dup nodes:', dedup.dupNames.join(', '));
+            }
         }
 
         // ================= Clash YAML reverse compilation parser (Roundtrip-Safe Edition) =================
@@ -2238,6 +2822,18 @@
                     nObj.network = stripQuotesHelper(item.network || 'tcp');
                     nObj.path = stripQuotesHelper(item.path || item['ws-path'] || '/');
                     nObj.host = stripQuotesHelper(item.host || item.Host || '');
+                    // 嵌套 ws-opts: {path: ..., headers: {Host: ...}} -> 提取到顶层 path / host
+                    if (nObj.network === 'ws' && item['ws-opts']) {
+                        const wsOpts = parseFlowObject(item['ws-opts']);
+                        if ((nObj.path === '/' || !nObj.path) && wsOpts.path) {
+                            nObj.path = String(wsOpts.path);
+                        }
+                        if (!nObj.host && wsOpts.headers && typeof wsOpts.headers === 'object') {
+                            const h = wsOpts.headers.Host || wsOpts.headers.host || '';
+                            if (h) nObj.host = String(h);
+                        }
+                        console.info('[import] ' + nObj.type + ' ws-opts parsed name=' + rawName + ' path=' + nObj.path + ' host=' + nObj.host);
+                    }
                     if (nObj.type === 'vless') {
                         nObj.encryption = stripQuotesHelper(item.cipher || item.encryption || 'none');
                     } else {
@@ -2250,10 +2846,40 @@
                 } else if (nObj.type === 'ss') {
                     nObj.cipher = stripQuotesHelper(item.cipher || 'aes-256-gcm');
                     nObj.pass = stripQuotesHelper(item.password || '');
+                    const ssPlugin = stripQuotesHelper(item.plugin || '');
+                    if (ssPlugin) {
+                        nObj.plugin = ssPlugin;
+                        let rawOpts = (item['plugin-opts'] || '').trim();
+                        if (rawOpts.startsWith('{') && rawOpts.endsWith('}')) {
+                            rawOpts = rawOpts.slice(1, -1).trim();
+                        }
+                        nObj.pluginOpts = rawOpts;
+                        console.info('[import] ss preserve plugin name=' + rawName + ' plugin=' + ssPlugin + ' optsLen=' + nObj.pluginOpts.length);
+                    }
                 } else if (nObj.type === 'trojan') {
                     nObj.pass = stripQuotesHelper(item.password || '');
                     nObj.sni = stripQuotesHelper(item.sni || '');
                     nObj.network = stripQuotesHelper(item.network || 'tcp');
+                    nObj.path = stripQuotesHelper(item.path || item['ws-path'] || '/');
+                    nObj.host = stripQuotesHelper(item.host || item.Host || '');
+                    if (nObj.network === 'ws' && item['ws-opts']) {
+                        const wsOpts = parseFlowObject(item['ws-opts']);
+                        if ((nObj.path === '/' || !nObj.path) && wsOpts.path) {
+                            nObj.path = String(wsOpts.path);
+                        }
+                        if (!nObj.host && wsOpts.headers && typeof wsOpts.headers === 'object') {
+                            const h = wsOpts.headers.Host || wsOpts.headers.host || '';
+                            if (h) nObj.host = String(h);
+                        }
+                        console.info('[import] trojan ws-opts parsed name=' + rawName + ' path=' + nObj.path + ' host=' + nObj.host);
+                    }
+                } else if (nObj.type === 'anytls') {
+                    nObj.pass = stripQuotesHelper(item.password || '');
+                    nObj.sni = stripQuotesHelper(item.sni || '');
+                    nObj.udp = parseBool(item.udp);
+                    nObj.skipCertVerify = parseBool(item['skip-cert-verify']);
+                    nObj.clientFingerprint = stripQuotesHelper(item['client-fingerprint'] || '');
+                    console.info('[import] anytls node name=' + rawName + ' server=' + nObj.server + ' fp=' + nObj.clientFingerprint);
                 }
                 importedPhysicalNodes.push(nObj);
             });
@@ -2477,22 +3103,49 @@
                         idMap[inc.id] = inc.id;
                         return inc;
                     });
-                    // 分组里引用的 node id 也要相应替换
-                    mergedGroups.forEach(g => {
-                        g.nodes = (g.nodes || []).map(nid => idMap[nid] || nid);
-                        // group 内部再做一次顺序去重(同一节点可能因 idMap 折叠)
-                        const seen = new Set();
-                        g.nodes = g.nodes.filter(nid => seen.has(nid) ? false : (seen.add(nid), true));
-                    });
-                    console.info('[import] clash dedup done, final nodes=' + finalNodes.length + ' (out of imported=' + importedPhysicalNodes.length + ')');
-                    nodes = finalNodes;
-                    groups = mergedGroups;
+
+                    // 检查用户是否选了分组
+                    const targetGroupVal = document.getElementById('import-target-group').value;
+                    console.info('[import] targetGroupVal=', targetGroupVal);
+
+                    if (targetGroupVal && targetGroupVal !== 'default') {
+                        // 选了分组：只在当前 groups 里追加节点，不覆盖 groups 和 nodes
+                        // 先合并节点（追加新节点，保留已有节点）
+                        const existingIds = new Set(nodes.map(n => n.id));
+                        const newNodesToAdd = finalNodes.filter(n => !existingIds.has(n.id));
+                        nodes = [...nodes, ...newNodesToAdd];
+                        console.info('[import] merged nodes: existing=' + nodes.length + ' + new=' + newNodesToAdd.length);
+
+                        // 找到目标分组并追加节点
+                        let targetG = groups.find(g => g.id === targetGroupVal);
+                        if (!targetG) {
+                            targetG = groups.find(g => g.name === targetGroupVal);
+                        }
+                        if (targetG) {
+                            finalNodes.forEach(n => {
+                                if (!targetG.nodes.includes(n.id)) targetG.nodes.push(n.id);
+                            });
+                            console.info('[import] added ' + finalNodes.length + ' nodes to group:', targetG.name);
+                        }
+                        console.info('[import] selected group mode: groups preserved');
+                    } else {
+                        // 没选分组：按原有逻辑
+                        // 分组里引用的 node id 也要相应替换
+                        mergedGroups.forEach(g => {
+                            g.nodes = (g.nodes || []).map(nid => idMap[nid] || nid);
+                            const seen = new Set();
+                            g.nodes = g.nodes.filter(nid => seen.has(nid) ? false : (seen.add(nid), true));
+                        });
+                        nodes = finalNodes;
+                        groups = mergedGroups;
+                        console.info('[import] default mode: groups overwritten by YAML');
+                    }
+
+                    console.info('[import] final nodes=' + nodes.length + ', groups=' + groups.length);
                     finalizeClashRestoration();
                 }
             );
         }
-
-        // 把 "- {k: v, k2: v2}" 展开为 block style (嵌套花括号原样保留作为字符串)
         function expandFlowStyleItems(yamlText) {
             const out = [];
             const lines = yamlText.split('\n');
@@ -2530,6 +3183,28 @@
             const tail = s.substring(start).trim();
             if (tail) res.push(tail);
             return res;
+        }
+        // 递归解析 flow 形式对象 "{k: v, k2: {nk: nv}}" -> JS 对象, 内层 {} 保留递归
+        function parseFlowObject(s) {
+            if (!s) return {};
+            let inner = String(s).trim();
+            if (inner.startsWith('{') && inner.endsWith('}')) {
+                inner = inner.slice(1, -1).trim();
+            }
+            const out = {};
+            const parts = splitFlowFields(inner);
+            for (const p of parts) {
+                const ci = p.indexOf(':');
+                if (ci === -1) continue;
+                const k = p.slice(0, ci).trim();
+                const v = p.slice(ci + 1).trim();
+                if (v.startsWith('{') && v.endsWith('}')) {
+                    out[k] = parseFlowObject(v);
+                } else {
+                    out[k] = v.replace(/^['"]|['"]$/g, '');
+                }
+            }
+            return out;
         }
         function parseBool(v) {
             if (v === undefined || v === null) return false;
@@ -2720,10 +3395,19 @@
                     path: "/"
                 };
             } else if (type === 'ss') {
+                const ssPluginRaw = document.getElementById('man-ss-plugin').value.trim();
+                const ssOptsRaw = document.getElementById('man-ss-plugin-opts').value.trim();
                 extraProps = {
                     cipher: document.getElementById('man-ss-cipher').value,
                     pass: document.getElementById('man-ss-pass').value
                 };
+                if (ssPluginRaw) {
+                    extraProps.plugin = ssPluginRaw;
+                    // textarea 里可能粘贴整个 {mode: ..., mux: false}, 自动剥外层 {}
+                    let opts = ssOptsRaw;
+                    if (opts.startsWith('{') && opts.endsWith('}')) opts = opts.slice(1, -1).trim();
+                    extraProps.pluginOpts = opts;
+                }
             } else if (type === 'trojan') {
                 extraProps = {
                     pass: document.getElementById('man-trojan-pass').value,
@@ -2735,6 +3419,14 @@
                     pass: document.getElementById('man-hy2-pass').value,
                     sni: document.getElementById('man-hy2-sni').value,
                     skipCertVerify: false
+                };
+            } else if (type === 'anytls') {
+                extraProps = {
+                    pass: document.getElementById('man-anytls-pass').value,
+                    sni: document.getElementById('man-anytls-sni').value,
+                    clientFingerprint: document.getElementById('man-anytls-fingerprint').value,
+                    udp: document.getElementById('man-anytls-udp').checked,
+                    skipCertVerify: document.getElementById('man-anytls-skip-cert').checked
                 };
             }
 
@@ -2990,6 +3682,24 @@
                 pYaml += `    port: ${n.port}\n`;
                 pYaml += `    cipher: ${n.cipher}\n`;
                 pYaml += `    password: "${n.pass}"\n`;
+                // 透传 ss 插件信息以保证导入->导出的往返一致 (e.g. v2ray-plugin)
+                if (n.plugin) {
+                    pYaml += `    plugin: ${n.plugin}\n`;
+                    if (n.pluginOpts) {
+                        pYaml += `    plugin-opts:\n`;
+                        const pairs = splitFlowFields(n.pluginOpts);
+                        for (const pair of pairs) {
+                            const c = pair.indexOf(':');
+                            if (c === -1) continue;
+                            const k = pair.slice(0, c).trim();
+                            const v = pair.slice(c + 1).trim();
+                            pYaml += `      ${k}: ${v}\n`;
+                        }
+                        console.info('[compile] ss emit plugin name=' + pName + ' plugin=' + n.plugin + ' fields=' + pairs.length);
+                    } else {
+                        console.info('[compile] ss emit plugin name=' + pName + ' plugin=' + n.plugin + ' (no opts)');
+                    }
+                }
             } else if (n.type === 'hysteria2' || n.type === 'hy2') {
                 pYaml += `  - name: "${pName}"\n`;
                 pYaml += `    type: hysteria2\n`;
@@ -3018,6 +3728,17 @@
                     }
                 }
                 pYaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
+            } else if (n.type === 'anytls') {
+                pYaml += `  - name: "${pName}"\n`;
+                pYaml += `    type: anytls\n`;
+                pYaml += `    server: ${n.server}\n`;
+                pYaml += `    port: ${n.port}\n`;
+                pYaml += `    password: "${n.pass}"\n`;
+                if (n.sni) pYaml += `    sni: "${n.sni}"\n`;
+                if (n.clientFingerprint) pYaml += `    client-fingerprint: ${n.clientFingerprint}\n`;
+                if (n.udp) pYaml += `    udp: true\n`;
+                if (n.skipCertVerify) pYaml += `    skip-cert-verify: true\n`;
+                console.info('[compile] anytls emit name=' + pName + ' server=' + n.server + ' fp=' + (n.clientFingerprint || ''));
             } else {
                 console.warn("[compile] writeProxyYamlHelper: unsupported node type", n.type, "node=", n.name);
             }
@@ -3168,13 +3889,18 @@
 
             // 2.0 系统组 -- 全部带 meta-system 标识,导入时被跳过
 
-            // 主控选路: MATRIX(链式选择) + 各 entry/common/relay 主选 + DIRECT
+            // 主控选路: 链式选择(MATRIX) + 各 entry/common/relay 主选 + DIRECT
+            //   - 有 exit 分组: MATRIX + 各组 + DIRECT
+            //   - 无 exit 分组: 仅各组 + DIRECT (链式架构无意义)
             //   ❌ 不列 exit 直连版 (exit 走链才通,通过 MATRIX 触达)
             //   ❌ 不列 ENTRY/EXIT 总线 (它们是动态链式的设置组)
             //   ❌ 不列物理节点直挂 (避免主控过乱)
             yaml += `  # meta-system: master\n`;
             yaml += `  - name: "${MASTER_NAME}"\n    type: select\n    proxies:\n`;
-            yaml += `      - "${MATRIX_NAME}"\n`;
+            const exitGroupsArr = groups.filter(g => g.role === 'exit');
+            if (exitGroupsArr.length > 0) {
+                yaml += `      - "${MATRIX_NAME}"\n`;
+            }
             groups.forEach(g => {
                 if (g.role === 'exit') return; // exit 走链,不在主控直选
                 yaml += `      - "${groupClashNameMap[g.id]}"\n`;
@@ -3195,24 +3921,20 @@
             }
             yaml += `\n`;
 
-            // 落地总线: 列出所有 role=exit 的"链式版"用户组 (proxies 是 ⛓️ 衍生节点)
-            // → 用户在 clash 客户端切换它,即可改变"链式落地的出口选择"
-            yaml += `  # meta-system: exit-bus\n`;
-            yaml += `  - name: "${EXIT_BUS_NAME}"\n    type: select\n    proxies:\n`;
-            const exitGroupsArr = groups.filter(g => g.role === 'exit');
-            if (exitGroupsArr.length === 0) {
-                yaml += `      - "DIRECT"\n`;
-            } else {
+            // 落地总线 + MATRIX: 仅在有 exit 分组时输出(无落地分组时整个链式架构无意义)
+            if (exitGroupsArr.length > 0) {
+                yaml += `  # meta-system: exit-bus\n`;
+                yaml += `  - name: "${EXIT_BUS_NAME}"\n    type: select\n    proxies:\n`;
                 exitGroupsArr.forEach(g => yaml += `      - "${groupClashNameMap[g.id]}"\n`);
                 yaml += `      - "DIRECT"\n`;
-            }
-            yaml += `\n`;
+                yaml += `\n`;
 
-            // 动态组合链路: 指向落地总线
-            // 链路: MATRIX → EXIT 总线 → 当前 exit(链式版) → ⛓️ → ENTRY 总线 → 当前 entry → 物理节点 → 出网
-            yaml += `  # meta-system: matrix\n`;
-            yaml += `  - name: "${MATRIX_NAME}"\n    type: select\n    hidden: true\n    proxies:\n`;
-            yaml += `      - "${EXIT_BUS_NAME}"\n\n`;
+                // 动态组合链路: 指向落地总线
+                // 链路: MATRIX → EXIT 总线 → 当前 exit(链式版) → ⛓️ → ENTRY 总线 → 当前 entry → 物理节点 → 出网
+                yaml += `  # meta-system: matrix\n`;
+                yaml += `  - name: "${MATRIX_NAME}"\n    type: select\n    hidden: true\n    proxies:\n`;
+                yaml += `      - "${EXIT_BUS_NAME}"\n\n`;
+            }
 
             // 2.1 用户分组 -- 双轨制:
             //   - entry/common/relay: 1 套(主组 + auto 子组)
@@ -3414,7 +4136,7 @@
         // 把一个内部 node 对象序列化为 share link (v2rayN / 小火箭通用)
         function nodeToShareLink(n) {
             if (!n || !n.type) return null;
-            const name = encodeURIComponent(n.name || "");
+            const name = encodeFragmentSafe(n.name || "");
             try {
                 if (n.type === 'vmess') {
                     // v2rayN vmess JSON-base64 form
@@ -3448,13 +4170,49 @@
                     return `vless://${encodeURIComponent(n.uuid || '')}@${n.server}:${n.port}?${params.toString()}#${name}`;
                 }
                 if (n.type === 'ss') {
-                    const userInfo = btoa(unescape(encodeURIComponent(`${n.cipher || 'aes-256-gcm'}:${n.pass || ''}`)));
-                    return `ss://${userInfo}@${n.server}:${n.port}#${name}`;
+                    const method = n.cipher || 'aes-256-gcm';
+                    // SIP022: SS-2022 节点 userinfo 必须明文 method:percent-encoded-password,
+                    // 不能 base64, 否则 Shadowrocket / v2rayN 识别失败延迟为 -1。
+                    const isSip022 = /^2022-blake3-/.test(method);
+                    const userInfo = isSip022
+                        ? `${method}:${encodeURIComponent(n.pass || '')}`
+                        : b64UrlSafe(`${method}:${n.pass || ''}`);
+                    let suffix = '';
+                    if (n.plugin) {
+                        // 严格只输出 ss plugin 标准键: mode/host/path/tls/mux/loglevel
+                        const whitelist = new Set(['mode', 'host', 'path', 'tls', 'mux', 'loglevel']);
+                        const pairs = splitFlowFields(n.pluginOpts || '');
+                        const optsMap = {};
+                        for (const pair of pairs) {
+                            const ci = pair.indexOf(':');
+                            if (ci === -1) continue;
+                            const k = pair.slice(0, ci).trim();
+                            const v = pair.slice(ci + 1).trim().replace(/^['"]|['"]$/g, '');
+                            if (k) optsMap[k] = v;
+                        }
+                        // 实测确认: Shadowrocket 原生支持 gost-plugin, 不需要别名到 v2ray-plugin
+                        // (v2ray-plugin 客户端连不上 gost 服务端)。保留原始 plugin 名透传。
+                        const parts = [n.plugin];
+                        for (const [k, v] of Object.entries(optsMap)) {
+                            if (!whitelist.has(k)) continue;
+                            if (v === 'true') parts.push(k);
+                            else if (v === 'false') { if (k === 'mux') parts.push('mux=0'); }
+                            else parts.push(k + '=' + v);
+                        }
+                        // SIP002 要求带 plugin 时 host:port 后面有 "/", 否则 Shadowrocket 等严格客户端无法解析
+                        suffix = '/?plugin=' + encodeURIComponent(parts.join(';'));
+                        console.info('[share-export] ss plugin url name=' + (n.name || '') + ' plugin=' + n.plugin + ' sip022=' + isSip022);
+                    }
+                    return `ss://${userInfo}@${n.server}:${n.port}${suffix}#${name}`;
                 }
                 if (n.type === 'trojan') {
                     const params = new URLSearchParams();
                     if (n.sni) params.set('sni', n.sni);
                     if (n.network) params.set('type', n.network);
+                    if (n.network === 'ws') {
+                        if (n.host) params.set('host', n.host);
+                        if (n.path) params.set('path', n.path);
+                    }
                     return `trojan://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}?${params.toString()}#${name}`;
                 }
                 if (n.type === 'hysteria2' || n.type === 'hy2') {
@@ -3462,6 +4220,17 @@
                     if (n.sni) params.set('sni', n.sni);
                     if (n.skipCertVerify) params.set('insecure', '1');
                     return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}/?${params.toString()}#${name}`;
+                }
+                if (n.type === 'anytls') {
+                    // 标准 URI: anytls://<percent-encoded-pass>@host:port/?sni=&insecure=0|1#name
+                    // 见 anytls-go/docs/uri_scheme.md, Shadowrocket 2.2.65+ / mihomo / sing-box 原生支持。
+                    const params = new URLSearchParams();
+                    if (n.sni) params.set('sni', n.sni);
+                    if (n.skipCertVerify) params.set('insecure', '1');
+                    const qs = params.toString();
+                    const suffix = qs ? '/?' + qs : '';
+                    console.info('[share-export] anytls link name=' + (n.name || '') + ' insecure=' + (n.skipCertVerify ? 1 : 0));
+                    return `anytls://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${suffix}#${name}`;
                 }
                 if (n.type === 'socks' || n.type === 'socks5') {
                     if (n.user) {
@@ -3476,6 +4245,18 @@
             }
             console.warn("[share-export] unsupported node type", n.type, n.name);
             return null;
+        }
+
+        // SIP002 URL-safe 无 padding base64
+        function b64UrlSafe(s) {
+            return btoa(unescape(encodeURIComponent(s)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+        }
+        // encodeURIComponent 漏掉 ()!'*, fragment 部分手动补
+        function encodeFragmentSafe(s) {
+            return encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
         }
 
         // ================= Calpher Cloud API (订阅 + 用户管理) =================
@@ -3566,6 +4347,8 @@
         function applyServerConfig(cfg) {
             nodes = Array.isArray(cfg.nodes) ? cfg.nodes : [];
             groups = Array.isArray(cfg.groups) ? cfg.groups : [];
+            // 保留服务器上已有的 compiledYaml(避免覆盖为空)
+            if (cfg.compiledYaml) compiledYaml = cfg.compiledYaml;
             if (cfg.busNames) {
                 masterControlName = cfg.busNames.master || masterControlName;
                 entryBusName = cfg.busNames.entry || entryBusName;
@@ -3578,11 +4361,19 @@
             }
             renderNodesTable();
             renderTopology();
+            setupTableDragDrop(); // 初始化拖拽排序
         }
 
         async function saveToCloud() {
             // 触发一次编译以拿到最新 compiledYaml
-            try { compileConfig(); } catch (e) { console.warn('[saveToCloud] compile failed', e); }
+            let compileErr = null;
+            try {
+                compileConfig();
+                console.info('[saveToCloud] compileConfig returned, compiledYaml length=', (compiledYaml || '').length);
+            } catch (e) {
+                compileErr = e;
+                console.error('[saveToCloud] compile threw err=', e, 'compiledYaml=', compiledYaml ? compiledYaml.slice(0, 100) : 'empty');
+            }
             const targetUuid = impersonatedUuid || currentUser.uuid;
             const payload = {
                 config: {
@@ -3591,6 +4382,7 @@
                     compiledYaml: compiledYaml || '',
                 },
             };
+            console.info('[saveToCloud] compiledYaml length=', (compiledYaml || '').length, 'nodes=', nodes.length);
             try {
                 const data = await apiFetch('/api/config?uuid=' + encodeURIComponent(targetUuid), {
                     method: 'PUT',
@@ -3918,10 +4710,8 @@
             if (colonIdx !== -1) {
                 const key = str.substring(0, colonIdx).trim();
                 let val = str.substring(colonIdx + 1).trim();
-                // 移除 YAML 注释
                 val = val.split('#')[0].trim();
-                // 移除大括号、引号等
-                obj[key] = val.replace(/^[{\s'"]+|[}\s'"]+$/g, '');
+                obj[key] = val.replace(/^['"\s]+|['"\s]+$/g, '');
             }
         }
     </script>
