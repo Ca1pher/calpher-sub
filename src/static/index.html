@@ -371,7 +371,7 @@
                 <div>
                     <h1 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
                         Calpher 订阅管理
-                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.2</span>
+                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.3</span>
                     </h1>
                     <p class="text-[11px] text-slate-500 mt-0.5">多用户 Clash / V2Ray / 小火箭 订阅编排与分发</p>
                 </div>
@@ -2367,21 +2367,37 @@
                 if (!fp) return;
                 if (fpMap.has(fp)) {
                     const existing = fpMap.get(fp);
-                    // 只补充 existing 缺失的字段, 不覆盖用户已有的自定义(name/sni 等)。
-                    // 历史 bug: 之前 dedup 命中后完全丢弃 incoming, 导致重新 import 时
-                    // 新增的 plugin / pluginOpts / ws-opts 这种"旧节点没有"的字段补不进来,
-                    // 用户体感就是"分享链接导入回来后参数全没了"。
+                    // 去重命中后的合并策略:
+                    //   1) existing 缺失的字段 -> 用 incoming 补上。历史 bug: 之前命中后完全丢弃
+                    //      incoming, 重新 import 时 plugin/pluginOpts/ws-opts 这种"旧节点没有"的
+                    //      字段补不进来, 用户体感是"分享链接导入回来后参数全没了"。
+                    //   2) 传输路由字段(path/host/network) -> 用 incoming 的"有效值"覆盖 existing。
+                    //      vmess/vless/trojan 的指纹只认 uuid/pass+server+port, 不含 path/host,
+                    //      所以同 UUID、仅 path 不同的节点会命中去重; 若只补空字段, 旧节点已有的
+                    //      path='/' 永远盖不掉 -> 用户体感"导入带 path 的链接, 订阅里 path 还是 /"。
+                    //      仍保护 name/sni 等用户可能手改的字段(不在白名单内, 不覆盖)。
+                    // 覆盖时跳过"默认/空哨兵值"(path 的 ''、'/'; host 的 ''; network 的 ''、'tcp'),
+                    // 避免用一条没带 path 的链接把已有真实 path 反向冲成 '/'。
+                    const OVERWRITE_TRANSPORT = { path: ['', '/'], host: [''], network: ['', 'tcp'] };
                     let merged = 0;
                     for (const k of Object.keys(inc)) {
                         if (k === 'id' || k === 'name') continue;
                         const ev = existing[k];
+                        const iv = inc[k];
                         if (ev === undefined || ev === null || ev === '') {
-                            existing[k] = inc[k];
+                            existing[k] = iv;            // 补空字段
+                            merged++;
+                        } else if (OVERWRITE_TRANSPORT[k]
+                                   && iv != null
+                                   && !OVERWRITE_TRANSPORT[k].includes(String(iv))
+                                   && String(iv) !== String(ev)) {
+                            console.info('[dedup] overwrite transport existingId=' + existing.id + ' name=' + (existing.name || '') + ' key=' + k + ' old=' + JSON.stringify(ev) + ' new=' + JSON.stringify(iv));
+                            existing[k] = iv;            // 用导入值原地更新传输字段
                             merged++;
                         }
                     }
                     if (merged > 0) {
-                        console.info('[dedup] fp-hit fill missing fields existingId=' + existing.id + ' added=' + merged);
+                        console.info('[dedup] fp-hit merged fields existingId=' + existing.id + ' count=' + merged);
                     }
                     idMap[inc.id] = existing.id;
                     if (!seenIncoming.has(existing.id)) {
@@ -2638,7 +2654,9 @@
                     else if (scheme === 'hy2' || scheme === 'hysteria2') {
                         const pass = decodeURIComponent(credentials);
                         const sni = queryParams.get('sni') || '';
-                        const skipCertVerify = queryParams.get('insecure') === '1' || queryParams.get('skipCertVerify') === 'true';
+                        const skipCertVerify = queryParams.get('insecure') === '1' || 
+                                             queryParams.get('allowInsecure') === '1' || 
+                                             queryParams.get('skipCertVerify') === 'true';
 
                         incoming.push({
                             id: nid,
@@ -4218,8 +4236,12 @@
                 if (n.type === 'hysteria2' || n.type === 'hy2') {
                     const params = new URLSearchParams();
                     if (n.sni) params.set('sni', n.sni);
-                    if (n.skipCertVerify) params.set('insecure', '1');
-                    return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}/?${params.toString()}#${name}`;
+                    if (n.skipCertVerify) {
+                        params.set('insecure', '1');
+                        params.set('allowInsecure', '1');
+                    }
+                    const qs = params.toString();
+                    return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${qs ? '?' + qs : ''}#${name}`;
                 }
                 if (n.type === 'anytls') {
                     // 标准 URI: anytls://<percent-encoded-pass>@host:port/?sni=&insecure=0|1#name

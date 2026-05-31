@@ -110,8 +110,13 @@ export function nodeToShareLink(n) {
         if (n.type === 'hysteria2' || n.type === 'hy2') {
             const params = new URLSearchParams();
             if (n.sni) params.set('sni', n.sni);
-            if (n.skipCertVerify) params.set('insecure', '1');
-            return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}/?${params.toString()}#${name}`;
+            if (n.skipCertVerify) {
+                params.set('insecure', '1');
+                // 兼容性: Shadowrocket 等客户端可能用 allowInsecure
+                params.set('allowInsecure', '1');
+            }
+            const qs = params.toString();
+            return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${qs ? '?' + qs : ''}#${name}`;
         }
         if (n.type === 'anytls') {
             // 标准 URI: anytls://<percent-encoded-pass>@host:port/?sni=&insecure=0|1#name
