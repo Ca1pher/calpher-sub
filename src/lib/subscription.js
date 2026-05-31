@@ -89,11 +89,12 @@ export function nodeToShareLink(n) {
             const userInfo = isSip022
                 ? `${method}:${encodeURIComponent(n.pass || '')}`
                 : b64encodeUrlSafe(`${method}:${n.pass || ''}`);
-            // SIP002: 带 plugin 时 host:port 后面必须有 "/", 否则 Shadowrocket 等严格客户端无法解析 plugin 参数
+            // SIP002: ss plugin 参数直接跟在 host:port 后, 不加 "/"。
+            // 实测部分客户端(用户反馈)带 "/" 反而无法解析 plugin、测延迟/连接失败; 不带 "/" 两种解析器都认。
             let suffix = '';
             if (n.plugin) {
                 const pParam = ssPluginUriParam(n.plugin, n.pluginOpts);
-                if (pParam) suffix = '/?plugin=' + encodeURIComponent(pParam);
+                if (pParam) suffix = '?plugin=' + encodeURIComponent(pParam);
             }
             return `ss://${userInfo}@${n.server}:${n.port}${suffix}#${name}`;
         }

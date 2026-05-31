@@ -1,6 +1,6 @@
 {
   "name": "calpher-sub",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Calpher 订阅管理 - 多用户 Clash/V2Ray 订阅编排与分发",
   "main": "src/index.js",

@@ -371,7 +371,7 @@
                 <div>
                     <h1 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
                         Calpher 订阅管理
-                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.3</span>
+                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.4</span>
                     </h1>
                     <p class="text-[11px] text-slate-500 mt-0.5">多用户 Clash / V2Ray / 小火箭 订阅编排与分发</p>
                 </div>
@@ -914,6 +914,65 @@
                         <label class="block text-xs font-semibold text-slate-500 mb-1">用户 UUID</label>
                         <input type="text" id="man-vmess-uuid" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="VMess/VLESS UUID">
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">传输层安全 (TLS)</label>
+                            <select id="man-vmess-tls" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                                <option value="">关闭 (none)</option>
+                                <option value="tls">TLS</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">SNI / 域名校验</label>
+                            <input type="text" id="man-vmess-sni" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="留空则用服务器域名">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Host / 伪装域名</label>
+                            <input type="text" id="man-vmess-host" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="ws/grpc 的 Host 头">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">客户端指纹 (uTLS)</label>
+                            <select id="man-vmess-fp" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                                <option value="">(不指定)</option>
+                                <option value="chrome">chrome</option>
+                                <option value="firefox">firefox</option>
+                                <option value="safari">safari</option>
+                                <option value="ios">ios</option>
+                                <option value="android">android</option>
+                                <option value="edge">edge</option>
+                                <option value="random">random</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Path / 路径 (ws/grpc)</label>
+                        <input type="text" id="man-vmess-path" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="留空表示不带 path">
+                    </div>
+                    <!-- VLESS 专属: 加密(标准恒为 none) -->
+                    <div id="man-vless-extra">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">加密 (Encryption)</label>
+                        <select id="man-vless-encryption" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                            <option value="none">none</option>
+                        </select>
+                    </div>
+                    <!-- VMess 专属: alterId + 安全算法 -->
+                    <div id="man-vmess-extra" class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">alterId</label>
+                            <input type="number" id="man-vmess-aid" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-center focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">加密算法 (Security)</label>
+                            <select id="man-vmess-cipher" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                                <option value="auto">auto</option>
+                                <option value="aes-128-gcm">aes-128-gcm</option>
+                                <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+                                <option value="none">none</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 动态凭证字段 SS -->
@@ -954,6 +1013,16 @@
                             <input type="text" id="man-trojan-sni" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="example.com">
                         </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Host / 伪装域名 (ws)</label>
+                            <input type="text" id="man-trojan-host" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="ws 的 Host 头">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Path / 路径 (ws)</label>
+                            <input type="text" id="man-trojan-path" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="留空表示不带 path">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 动态凭证字段 Hysteria2 -->
@@ -967,6 +1036,12 @@
                             <label class="block text-xs font-semibold text-slate-500 mb-1">SNI / 域名校验</label>
                             <input type="text" id="man-hy2-sni" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="example.com">
                         </div>
+                    </div>
+                    <div>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                            <input type="checkbox" id="man-hy2-skip-cert" class="w-3.5 h-3.5">
+                            <span>跳过证书校验 (insecure)</span>
+                        </label>
                     </div>
                 </div>
 
@@ -1991,6 +2066,17 @@
                 document.getElementById('man-socks-pass').value = n.pass || '';
             } else if (n.type === 'vmess' || n.type === 'vless') {
                 document.getElementById('man-vmess-uuid').value = n.uuid || '';
+                document.getElementById('man-vmess-tls').value = n.tls ? 'tls' : '';
+                document.getElementById('man-vmess-sni').value = n.sni || '';
+                document.getElementById('man-vmess-host').value = n.host || '';
+                document.getElementById('man-vmess-fp').value = n.clientFingerprint || '';
+                document.getElementById('man-vmess-path').value = n.path || '';
+                if (n.type === 'vless') {
+                    document.getElementById('man-vless-encryption').value = n.encryption || 'none';
+                } else {
+                    document.getElementById('man-vmess-aid').value = (n.alterId != null ? n.alterId : 0);
+                    document.getElementById('man-vmess-cipher').value = n.cipher || 'auto';
+                }
             } else if (n.type === 'ss' || n.type === 'shadowsocks') {
                 document.getElementById('man-ss-cipher').value = n.cipher || 'aes-256-gcm';
                 document.getElementById('man-ss-pass').value = n.pass || '';
@@ -1999,9 +2085,12 @@
             } else if (n.type === 'trojan') {
                 document.getElementById('man-trojan-pass').value = n.pass || '';
                 document.getElementById('man-trojan-sni').value = n.sni || '';
+                document.getElementById('man-trojan-host').value = n.host || '';
+                document.getElementById('man-trojan-path').value = n.path || '';
             } else if (n.type === 'hysteria2' || n.type === 'hy2') {
                 document.getElementById('man-hy2-pass').value = n.pass || '';
                 document.getElementById('man-hy2-sni').value = n.sni || '';
+                document.getElementById('man-hy2-skip-cert').checked = !!n.skipCertVerify;
             } else if (n.type === 'anytls') {
                 document.getElementById('man-anytls-pass').value = n.pass || '';
                 document.getElementById('man-anytls-sni').value = n.sni || '';
@@ -2243,11 +2332,16 @@
             document.getElementById('man-ss-fields').classList.add('hidden');
             document.getElementById('man-trojan-fields').classList.add('hidden');
             document.getElementById('man-hy2-fields').classList.add('hidden');
+            document.getElementById('man-anytls-fields').classList.add('hidden');
 
             if (type === 'socks') {
                 document.getElementById('man-socks-credential-fields').classList.remove('hidden');
             } else if (type === 'vmess' || type === 'vless') {
                 document.getElementById('man-vmess-fields').classList.remove('hidden');
+                // vless 显示 encryption, vmess 显示 alterId+cipher
+                const isVless = type === 'vless';
+                document.getElementById('man-vless-extra').classList.toggle('hidden', !isVless);
+                document.getElementById('man-vmess-extra').classList.toggle('hidden', isVless);
             } else if (type === 'ss') {
                 document.getElementById('man-ss-fields').classList.remove('hidden');
             } else if (type === 'trojan') {
@@ -2376,9 +2470,13 @@
                     //      所以同 UUID、仅 path 不同的节点会命中去重; 若只补空字段, 旧节点已有的
                     //      path='/' 永远盖不掉 -> 用户体感"导入带 path 的链接, 订阅里 path 还是 /"。
                     //      仍保护 name/sni 等用户可能手改的字段(不在白名单内, 不覆盖)。
-                    // 覆盖时跳过"默认/空哨兵值"(path 的 ''、'/'; host 的 ''; network 的 ''、'tcp'),
-                    // 避免用一条没带 path 的链接把已有真实 path 反向冲成 '/'。
-                    const OVERWRITE_TRANSPORT = { path: ['', '/'], host: [''], network: ['', 'tcp'] };
+                    // 覆盖时跳过"默认/空哨兵值", 防止用信息不全的链接把已有真实值反向冲掉:
+                    //   path 的 ''、'/';  host 的 '';  network 的 ''、'tcp';
+                    //   tls 的 'false' -- parse 时 security 缺省即 false, 既可能是"明文"也可能是
+                    //   "链接没写", 二者不可分; 故只升不降(false->true 生效, 已是 tls 的不会被一条
+                    //   漏写 security=tls 的链接降级成明文)。注意 tls 是布尔, false 不会被"补空"分支
+                    //   命中(那条只认 undefined/null/''), 必须在这里显式处理, 否则 security=tls 丢失。
+                    const OVERWRITE_TRANSPORT = { path: ['', '/'], host: [''], network: ['', 'tcp'], tls: ['false'] };
                     let merged = 0;
                     for (const k of Object.keys(inc)) {
                         if (k === 'id' || k === 'name') continue;
@@ -3404,14 +3502,22 @@
                     pass: document.getElementById('man-socks-pass').value
                 };
             } else if (type === 'vmess' || type === 'vless') {
+                // 不再写死 tls/path/cipher——全部读表单, 否则编辑保存会把真实的 tls/path 重置掉
                 extraProps = {
-                    uuid: document.getElementById('man-vmess-uuid').value,
-                    alterId: 0,
-                    cipher: 'auto',
-                    tls: false,
+                    uuid: document.getElementById('man-vmess-uuid').value.trim(),
                     network: network,
-                    path: "/"
+                    tls: document.getElementById('man-vmess-tls').value === 'tls',
+                    sni: document.getElementById('man-vmess-sni').value.trim(),
+                    host: document.getElementById('man-vmess-host').value.trim(),
+                    path: document.getElementById('man-vmess-path').value.trim(),
+                    clientFingerprint: document.getElementById('man-vmess-fp').value
                 };
+                if (type === 'vless') {
+                    extraProps.encryption = document.getElementById('man-vless-encryption').value || 'none';
+                } else {
+                    extraProps.alterId = parseInt(document.getElementById('man-vmess-aid').value) || 0;
+                    extraProps.cipher = document.getElementById('man-vmess-cipher').value || 'auto';
+                }
             } else if (type === 'ss') {
                 const ssPluginRaw = document.getElementById('man-ss-plugin').value.trim();
                 const ssOptsRaw = document.getElementById('man-ss-plugin-opts').value.trim();
@@ -3429,14 +3535,17 @@
             } else if (type === 'trojan') {
                 extraProps = {
                     pass: document.getElementById('man-trojan-pass').value,
-                    sni: document.getElementById('man-trojan-sni').value,
-                    network: network
+                    sni: document.getElementById('man-trojan-sni').value.trim(),
+                    network: network,
+                    host: document.getElementById('man-trojan-host').value.trim(),
+                    path: document.getElementById('man-trojan-path').value.trim()
                 };
             } else if (type === 'hysteria2') {
+                // 不再写死 skipCertVerify:false——读复选框, 否则编辑保存会丢掉跳过证书校验
                 extraProps = {
                     pass: document.getElementById('man-hy2-pass').value,
-                    sni: document.getElementById('man-hy2-sni').value,
-                    skipCertVerify: false
+                    sni: document.getElementById('man-hy2-sni').value.trim(),
+                    skipCertVerify: document.getElementById('man-hy2-skip-cert').checked
                 };
             } else if (type === 'anytls') {
                 extraProps = {
@@ -3458,7 +3567,11 @@
                 }
                 const oldNode = nodes[idx];
                 nodes[idx] = { ...oldNode, name, type, server, port, ...extraProps };
-                console.info('[node-edit] saved nodeId=' + editingNodeId + ' name=' + name + ' type=' + type);
+                console.info('[node-edit] saved nodeId=' + editingNodeId + ' name=' + name + ' type=' + type
+                    + ' net=' + (extraProps.network || network || '')
+                    + ' tls=' + (extraProps.tls === true ? 1 : 0)
+                    + ' path=' + (extraProps.path || '')
+                    + ' skipCert=' + (extraProps.skipCertVerify === true ? 1 : 0));
                 closeManualModal();
                 renderNodesTable();
                 renderTopology();
@@ -4217,8 +4330,8 @@
                             else if (v === 'false') { if (k === 'mux') parts.push('mux=0'); }
                             else parts.push(k + '=' + v);
                         }
-                        // SIP002 要求带 plugin 时 host:port 后面有 "/", 否则 Shadowrocket 等严格客户端无法解析
-                        suffix = '/?plugin=' + encodeURIComponent(parts.join(';'));
+                        // ss plugin 参数直接跟 host:port 后, 不加 "/"(带 "/" 实测会导致部分客户端解析失败)
+                        suffix = '?plugin=' + encodeURIComponent(parts.join(';'));
                         console.info('[share-export] ss plugin url name=' + (n.name || '') + ' plugin=' + n.plugin + ' sip022=' + isSip022);
                     }
                     return `ss://${userInfo}@${n.server}:${n.port}${suffix}#${name}`;
