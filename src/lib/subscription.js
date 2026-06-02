@@ -111,10 +111,14 @@ export function nodeToShareLink(n) {
         if (n.type === 'hysteria2' || n.type === 'hy2') {
             const params = new URLSearchParams();
             if (n.sni) params.set('sni', n.sni);
+            if (n.pinSHA256) params.set('pinSHA256', n.pinSHA256);
             if (n.skipCertVerify) {
                 params.set('insecure', '1');
                 // 兼容性: Shadowrocket 等客户端可能用 allowInsecure
                 params.set('allowInsecure', '1');
+            } else if (n.insecureExplicit) {
+                params.set('insecure', '0');
+                params.set('allowInsecure', '0');
             }
             const qs = params.toString();
             return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${qs ? '?' + qs : ''}#${name}`;

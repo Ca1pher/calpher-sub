@@ -1038,6 +1038,10 @@
                         </div>
                     </div>
                     <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">证书 SHA256 指纹 (pinSHA256)</label>
+                        <input type="text" id="man-hy2-pin-sha256" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="DF:30:DC:...">
+                    </div>
+                    <div>
                         <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
                             <input type="checkbox" id="man-hy2-skip-cert" class="w-3.5 h-3.5">
                             <span>跳过证书校验 (insecure)</span>
@@ -2090,6 +2094,7 @@
             } else if (n.type === 'hysteria2' || n.type === 'hy2') {
                 document.getElementById('man-hy2-pass').value = n.pass || '';
                 document.getElementById('man-hy2-sni').value = n.sni || '';
+                document.getElementById('man-hy2-pin-sha256').value = n.pinSHA256 || '';
                 document.getElementById('man-hy2-skip-cert').checked = !!n.skipCertVerify;
             } else if (n.type === 'anytls') {
                 document.getElementById('man-anytls-pass').value = n.pass || '';
@@ -2755,6 +2760,7 @@
                         const skipCertVerify = queryParams.get('insecure') === '1' || 
                                              queryParams.get('allowInsecure') === '1' || 
                                              queryParams.get('skipCertVerify') === 'true';
+                        const insecureExplicit = queryParams.has('insecure') || queryParams.has('allowInsecure');
 
                         incoming.push({
                             id: nid,
@@ -2764,6 +2770,8 @@
                             port: parseInt(port) || 443,
                             pass: pass,
                             sni: sni,
+                            pinSHA256: queryParams.get('pinSHA256') || '',
+                            insecureExplicit: insecureExplicit,
                             skipCertVerify: skipCertVerify
                         });
                         parsedCount++;
@@ -2929,6 +2937,7 @@
                 if (nObj.type === 'hysteria2') {
                     nObj.pass = stripQuotesHelper(item.password || item.auth || '');
                     nObj.sni = stripQuotesHelper(item.sni || '');
+                    nObj.pinSHA256 = stripQuotesHelper(item.fingerprint || item.pinSHA256 || '');
                     nObj.skipCertVerify = parseBool(item['skip-cert-verify']);
                 } else if (nObj.type === 'vmess' || nObj.type === 'vless') {
                     nObj.uuid = stripQuotesHelper(item.uuid || '');
@@ -3545,6 +3554,7 @@
                 extraProps = {
                     pass: document.getElementById('man-hy2-pass').value,
                     sni: document.getElementById('man-hy2-sni').value.trim(),
+                    pinSHA256: document.getElementById('man-hy2-pin-sha256').value.trim(),
                     skipCertVerify: document.getElementById('man-hy2-skip-cert').checked
                 };
             } else if (type === 'anytls') {
@@ -3839,6 +3849,7 @@
                 pYaml += `    password: "${n.pass}"\n`;
                 pYaml += `    alpn: [h3]\n`;
                 if (n.sni) pYaml += `    sni: "${n.sni}"\n`;
+                if (n.pinSHA256) pYaml += `    fingerprint: "${n.pinSHA256}"\n`;
                 pYaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
             } else if (n.type === 'trojan') {
                 pYaml += `  - name: "${pName}"\n`;
@@ -4349,9 +4360,13 @@
                 if (n.type === 'hysteria2' || n.type === 'hy2') {
                     const params = new URLSearchParams();
                     if (n.sni) params.set('sni', n.sni);
+                    if (n.pinSHA256) params.set('pinSHA256', n.pinSHA256);
                     if (n.skipCertVerify) {
                         params.set('insecure', '1');
                         params.set('allowInsecure', '1');
+                    } else if (n.insecureExplicit) {
+                        params.set('insecure', '0');
+                        params.set('allowInsecure', '0');
                     }
                     const qs = params.toString();
                     return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${qs ? '?' + qs : ''}#${name}`;
