@@ -3780,7 +3780,7 @@
                 pYaml += `    type: vmess\n`;
                 pYaml += `    server: ${n.server}\n`;
                 pYaml += `    port: ${n.port}\n`;
-                pYaml += `    uuid: ${n.uuid}\n`;
+                pYaml += `    uuid: ${n.uuid || n.user || ''}\n`;
                 pYaml += `    alterId: ${n.alterId || 0}\n`;
                 pYaml += `    cipher: ${n.cipher || 'auto'}\n`;
                 pYaml += `    tls: ${!!n.tls}\n`;
@@ -3801,7 +3801,7 @@
                 pYaml += `    type: vless\n`;
                 pYaml += `    server: ${n.server}\n`;
                 pYaml += `    port: ${n.port}\n`;
-                pYaml += `    uuid: ${n.uuid}\n`;
+                pYaml += `    uuid: ${n.uuid || n.user || ''}\n`;
                 pYaml += `    cipher: "${n.encryption || 'none'}"\n`;
                 pYaml += `    tls: ${!!n.tls}\n`;
                 if (n.sni) pYaml += `    servername: "${n.sni}"\n`;

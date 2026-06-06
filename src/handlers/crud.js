@@ -120,6 +120,54 @@ export async function handleCreateNode(ctx) {
     return json({ uuid: r.uuid, node: finalNode, subscription: sub }, 201);
 }
 
+// 批量创建节点: POST /api/v1/nodes/batch  body: { nodes: [...], groupIds: [...] }
+export async function handleBatchCreateNodes(ctx) {
+    const { env, body, request } = ctx;
+    const r = await loadTarget(ctx); if (r.err) return r.err;
+
+    const inputNodes = Array.isArray(body && body.nodes) ? body.nodes : [];
+    if (inputNodes.length === 0) return badRequest('nodes 数组为空');
+
+    const groupIds = Array.isArray(body && body.groupIds) ? body.groupIds.filter(x => typeof x === 'string') : [];
+    const now = Date.now();
+
+    const results = [];
+    const validNodes = [];
+    for (let i = 0; i < inputNodes.length; i++) {
+        const fallbackId = 'n-batch-' + now + '-' + i + '-' + Math.random().toString(36).slice(2, 6);
+        const { node, err } = normalizeNodeInput(inputNodes[i], fallbackId);
+        if (err) {
+            results.push({ ok: false, index: i, error: err });
+        } else {
+            validNodes.push(node);
+            results.push({ ok: true, index: i, id: node.id });
+        }
+    }
+
+    if (validNodes.length === 0) return json({ uuid: r.uuid, created: 0, results });
+
+    // 合并到已有节点
+    const newNodes = [...r.cfg.nodes, ...validNodes];
+    const newGroups = r.cfg.groups.map(g => {
+        if (groupIds.includes(g.id)) {
+            const arr = Array.isArray(g.nodes) ? [...g.nodes] : [];
+            for (const n of validNodes) {
+                if (!arr.includes(n.id)) arr.push(n.id);
+            }
+            return { ...g, nodes: arr };
+        }
+        return g;
+    });
+
+    const { sanitized } = await persistConfig(env, r.uuid, r.user, {
+        nodes: newNodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
+    }, r.cfg);
+
+    const created = sanitized.nodes.length - r.cfg.nodes.length;
+    console.info('[crud] node-batch-create uuid=' + r.uuid + ' input=' + inputNodes.length + ' valid=' + validNodes.length + ' created=' + created);
+    return json({ uuid: r.uuid, created, total: sanitized.nodes.length, results }, 201);
+}
+
 export async function handleUpdateNode(ctx, nodeId) {
     const { env, body, request } = ctx;
     const r = await loadTarget(ctx); if (r.err) return r.err;

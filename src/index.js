@@ -10,6 +10,7 @@ import {
 } from './handlers/config.js';
 import {
     handleListNodes, handleGetNode, handleCreateNode, handleUpdateNode, handleDeleteNode,
+    handleBatchCreateNodes,
     handleListGroups, handleGetGroup, handleCreateGroup, handleUpdateGroup, handleDeleteGroup,
     handleAddGroupNode, handleRemoveGroupNode,
 } from './handlers/crud.js';
@@ -115,6 +116,7 @@ async function route(request, env, ctx) {
     // 节点维度
     if (path === '/api/v1/nodes' && method === 'GET') return handleListNodes(baseCtx);
     if (path === '/api/v1/nodes' && method === 'POST') return handleCreateNode(baseCtx);
+    if (path === '/api/v1/nodes/batch' && method === 'POST') return handleBatchCreateNodes(baseCtx);
     const nodeIdMatch = path.match(/^\/api\/v1\/nodes\/([^\/]+)$/);
     if (nodeIdMatch) {
         const nid = decodeURIComponent(nodeIdMatch[1]);

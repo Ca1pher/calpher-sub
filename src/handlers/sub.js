@@ -1,5 +1,5 @@
 import { getSubTokenOwner, getUser, getConfig } from '../lib/kv.js';
-import { buildShareLinks, toBase64Sub } from '../lib/subscription.js';
+import { buildShareLinks, toBase64Sub, compileClashYaml } from '../lib/subscription.js';
 import { notFound, text } from './_resp.js';
 
 // /sub/<token>/clash | /sub/<token>/v2ray | /sub/<token>/group/<groupId>
@@ -28,10 +28,13 @@ export async function handlePublicSubscription(env, request, path) {
     }
 
     if (kind === 'clash') {
-        const yaml = cfg.compiledYaml || '';
-        if (!yaml) {
-            console.warn('[sub] clash yaml missing uuid=' + uuid + ' -- 浏览器未编译过');
-            return text('# 该用户尚未通过浏览器保存编译后的 Clash 配置\n', 404, { 'Content-Disposition': 'inline; filename="config.yaml"' });
+        let yaml = cfg.compiledYaml || '';
+        // 旧缓存可能含 uuid: undefined (非法 YAML), 降级到服务端生成
+        if (!yaml || yaml.includes('uuid: undefined')) {
+            yaml = compileClashYaml(cfg);
+            if (!yaml) {
+                return text('# 没有可用节点\n', 404, { 'Content-Disposition': 'inline; filename="config.yaml"' });
+            }
         }
         console.info('[sub] serve clash uuid=' + uuid + ' bytes=' + yaml.length);
         return new Response(yaml, {
