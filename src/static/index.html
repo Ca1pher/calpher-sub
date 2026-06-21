@@ -371,7 +371,7 @@
                 <div>
                     <h1 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
                         Calpher 订阅管理
-                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.4</span>
+                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.5</span>
                     </h1>
                     <p class="text-[11px] text-slate-500 mt-0.5">多用户 Clash / V2Ray / 小火箭 订阅编排与分发</p>
                 </div>
@@ -854,6 +854,16 @@
                     <i class="fa-solid fa-plus text-slate-600"></i> 手动添加物理服务器
                 </h3>
                 <button onclick="closeManualModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- 粘贴链接快速填充 (编辑/新建节点通用) -->
+            <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mb-3 space-y-2">
+                <label class="block text-xs font-semibold text-indigo-800"><i class="fa-solid fa-link mr-1"></i>粘贴分享链接快速填充 (可选)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="man-paste-link" class="flex-1 bg-white border border-indigo-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="vmess://... 或 vless://... 或 ss://... 或 socks5://...">
+                    <button type="button" onclick="applyLinkToEditForm()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 rounded-lg cursor-pointer whitespace-nowrap">解析并填充</button>
+                </div>
+                <p class="text-[10px] text-indigo-500">粘贴 v2ray/shadowrocket 分享链接,自动解析为下方表单字段。名称保留原值不变。</p>
             </div>
 
             <form id="manual-node-form" class="space-y-3" onsubmit="event.preventDefault(); submitManualNode();">
@@ -2034,6 +2044,7 @@
             const groupWrapper = document.getElementById('man-target-group-wrapper');
             const form = document.getElementById('manual-node-form');
             form.reset();
+            document.getElementById('man-paste-link').value = '';
 
             if (nodeId) {
                 // 编辑模式
@@ -2402,6 +2413,158 @@
             };
         }
 
+        // ================= 粘贴链接 → 表单字段解析器 =================
+        function parseShareLinkToFields(link) {
+            if (!link || typeof link !== 'string') return null;
+            link = link.trim();
+            const schemeMatch = link.match(/^([a-zA-Z0-9+-.]+):\/\/(.*)/);
+            if (!schemeMatch) return null;
+            const scheme = schemeMatch[1].toLowerCase();
+            let payloadWithHash = schemeMatch[2];
+
+            // 去掉 #fragment (节点名)
+            const hashIndex = payloadWithHash.indexOf('#');
+            if (hashIndex !== -1) payloadWithHash = payloadWithHash.substring(0, hashIndex);
+
+            if (scheme === 'vmess') {
+                const jsonStr = safeAtob(payloadWithHash);
+                if (!jsonStr) return null;
+                try {
+                    const d = JSON.parse(jsonStr);
+                    return {
+                        type: 'vmess', server: d.add, port: parseInt(d.port) || 443,
+                        uuid: d.id, alterId: parseInt(d.aid || 0), cipher: d.scy || 'auto',
+                        network: d.net || 'tcp', tls: d.tls === 'tls' || d.tls === '1',
+                        sni: d.sni || d.host || '', host: d.host || '',
+                        path: d.path || '/', clientFingerprint: d.fp || ''
+                    };
+                } catch(e) { return null; }
+            }
+
+            let credentials = '', hostPortQuery = payloadWithHash;
+            const lastAt = payloadWithHash.lastIndexOf('@');
+            if (lastAt !== -1) {
+                credentials = payloadWithHash.substring(0, lastAt);
+                hostPortQuery = payloadWithHash.substring(lastAt + 1);
+            }
+            let hostPort = hostPortQuery, queryString = '';
+            const qIdx = hostPortQuery.indexOf('?');
+            if (qIdx !== -1) {
+                hostPort = hostPortQuery.substring(0, qIdx);
+                queryString = hostPortQuery.substring(qIdx + 1);
+            }
+            let server = hostPort, port = '443';
+            const colonIdx = hostPort.lastIndexOf(':');
+            if (colonIdx !== -1) {
+                server = hostPort.substring(0, colonIdx);
+                port = hostPort.substring(colonIdx + 1);
+            }
+            const qp = new URLSearchParams(queryString);
+            const result = { server, port: parseInt(port) || 443 };
+
+            if (scheme === 'vless') {
+                Object.assign(result, {
+                    type: 'vless', uuid: decodeURIComponent(credentials),
+                    encryption: qp.get('encryption') || 'none',
+                    network: qp.get('type') || 'tcp',
+                    tls: (qp.get('security') || '') === 'tls',
+                    sni: qp.get('sni') || '', host: qp.get('host') || '',
+                    path: qp.get('path') ? decodeURIComponent(qp.get('path')) : '/',
+                    clientFingerprint: qp.get('fp') || qp.get('client-fingerprint') || ''
+                });
+            } else if (scheme === 'ss') {
+                const decodedUser = safeAtob(credentials) || credentials;
+                let cipher = 'aes-256-gcm', pass = '';
+                const fc = decodedUser.indexOf(':');
+                if (fc !== -1) { cipher = decodedUser.substring(0, fc); pass = decodedUser.substring(fc + 1); }
+                else { pass = decodedUser; }
+                Object.assign(result, { type: 'ss', cipher, pass });
+            } else if (scheme === 'socks' || scheme === 'socks5') {
+                const auth = splitAuthCredentials(credentials);
+                Object.assign(result, { type: 'socks', user: auth.user, pass: auth.pass });
+                result.port = parseInt(port) || 1080;
+            } else if (scheme === 'trojan') {
+                Object.assign(result, {
+                    type: 'trojan', pass: decodeURIComponent(credentials),
+                    sni: qp.get('sni') || '', network: qp.get('type') || 'tcp',
+                    host: qp.get('host') || '', path: qp.get('path') || '/',
+                    skipCertVerify: qp.get('allowInsecure') === '1'
+                });
+            } else if (scheme === 'hysteria2' || scheme === 'hy2') {
+                Object.assign(result, {
+                    type: 'hysteria2', pass: decodeURIComponent(credentials),
+                    sni: qp.get('sni') || '',
+                    skipCertVerify: qp.get('insecure') === '1' || qp.get('allowInsecure') === '1',
+                    pinSHA256: qp.get('pinSHA256') || ''
+                });
+            } else if (scheme === 'anytls') {
+                Object.assign(result, {
+                    type: 'anytls', pass: decodeURIComponent(credentials),
+                    sni: qp.get('sni') || '',
+                    skipCertVerify: qp.get('insecure') === '1'
+                });
+            } else {
+                return null;
+            }
+            return result;
+        }
+
+        function applyLinkToEditForm() {
+            const link = document.getElementById('man-paste-link').value.trim();
+            if (!link) { showToast('请先粘贴分享链接'); return; }
+            const f = parseShareLinkToFields(link);
+            if (!f) { showToast('无法识别该链接格式'); return; }
+
+            // 设协议类型并刷新表单
+            document.getElementById('man-type').value = f.type;
+            toggleManualFormFields();
+
+            // 填充通用字段 (名称保留原值)
+            document.getElementById('man-server').value = f.server || '';
+            document.getElementById('man-port').value = f.port || '';
+            document.getElementById('man-network').value = f.network || 'tcp';
+
+            // 协议凭证
+            if (f.type === 'socks') {
+                document.getElementById('man-socks-user').value = f.user || '';
+                document.getElementById('man-socks-pass').value = f.pass || '';
+            } else if (f.type === 'vmess' || f.type === 'vless') {
+                document.getElementById('man-vmess-uuid').value = f.uuid || '';
+                document.getElementById('man-vmess-tls').value = f.tls ? 'tls' : '';
+                document.getElementById('man-vmess-sni').value = f.sni || '';
+                document.getElementById('man-vmess-host').value = f.host || '';
+                document.getElementById('man-vmess-fp').value = f.clientFingerprint || '';
+                document.getElementById('man-vmess-path').value = f.path || '';
+            }
+            if (f.type === 'ss') {
+                document.getElementById('man-ss-cipher').value = f.cipher || 'aes-256-gcm';
+                document.getElementById('man-ss-pass').value = f.pass || '';
+            }
+            if (f.type === 'trojan' || f.type === 'hysteria2' || f.type === 'hy2' || f.type === 'anytls') {
+                const passEl = document.getElementById(f.type === 'trojan' ? 'man-trojan-pass'
+                    : f.type === 'anytls' ? 'man-anytls-pass' : 'man-hy2-pass');
+                if (passEl) passEl.value = f.pass || '';
+            }
+            if (f.type === 'vmess') {
+                document.getElementById('man-vmess-aid').value = f.alterId || 0;
+                document.getElementById('man-vmess-cipher').value = f.cipher || 'auto';
+            }
+            if (f.type === 'vless') {
+                document.getElementById('man-vless-encryption').value = f.encryption || 'none';
+            }
+            if (f.sni !== undefined) {
+                if (f.type === 'trojan') document.getElementById('man-trojan-sni').value = f.sni;
+                else if (f.type === 'hysteria2' || f.type === 'hy2') document.getElementById('man-hy2-sni').value = f.sni;
+                else if (f.type === 'anytls') document.getElementById('man-anytls-sni').value = f.sni;
+            }
+            if (f.skipCertVerify !== undefined) {
+                if (f.type === 'hysteria2' || f.type === 'hy2') document.getElementById('man-hy2-skip-cert').checked = f.skipCertVerify;
+                else if (f.type === 'anytls') document.getElementById('man-anytls-skip-cert').checked = f.skipCertVerify;
+            }
+            if (f.pinSHA256) document.getElementById('man-hy2-pin-sha256').value = f.pinSHA256;
+            showToast('链接已解析并填充表单,请检查后保存');
+        }
+
         // ================= 节点指纹 & 导入去重 =================
         // 按"协议 + 主机 + 端口 + 关键认证字段"生成指纹,用来判断"完全相同的节点"
         function nodeFingerprint(n) {
@@ -2433,7 +2596,11 @@
             } else if (t === 'anytls') {
                 auth = (n.pass || '');
             } else if (t === 'socks' || t === 'socks5') {
-                auth = (n.user || '') + ':' + (n.pass || '');
+                const u = (n.user || '').trim();
+                const p = (n.pass || '').trim();
+                // 无认证的 socks 节点: 同一 IP:port 可能是不同优选IP分配,不能合并
+                if (!u && !p) return '';
+                auth = u + ':' + p;
             } else {
                 // 未知协议保守按完整字段
                 auth = JSON.stringify(n);
@@ -2450,77 +2617,13 @@
         //   idMap          -- incoming.id -> 最终 id 映射(分组引用替换用)
         //   dupCount       -- 去重命中的数量
         function dedupImportedNodes(currentNodes, incomingNodes) {
-            const fpMap = new Map();
-            (currentNodes || []).forEach(n => {
-                const fp = nodeFingerprint(n);
-                if (fp) fpMap.set(fp, n);
-            });
+            // 不做去重,直接全部追加。优选IP 场景下同一 server:port 可能是不同分配。
+            const appendedNodes = (incomingNodes || []).slice();
+            const finalIds = appendedNodes.map(n => n.id);
             const idMap = {};
-            const appendedNodes = [];
-            const finalIds = [];
-            const seenIncoming = new Set();
-            const dupNames = []; // 记录去重的节点名
-            let dupCount = 0;
-            (incomingNodes || []).forEach(inc => {
-                const fp = nodeFingerprint(inc);
-                if (!fp) return;
-                if (fpMap.has(fp)) {
-                    const existing = fpMap.get(fp);
-                    // 去重命中后的合并策略:
-                    //   1) existing 缺失的字段 -> 用 incoming 补上。历史 bug: 之前命中后完全丢弃
-                    //      incoming, 重新 import 时 plugin/pluginOpts/ws-opts 这种"旧节点没有"的
-                    //      字段补不进来, 用户体感是"分享链接导入回来后参数全没了"。
-                    //   2) 传输路由字段(path/host/network) -> 用 incoming 的"有效值"覆盖 existing。
-                    //      vmess/vless/trojan 的指纹只认 uuid/pass+server+port, 不含 path/host,
-                    //      所以同 UUID、仅 path 不同的节点会命中去重; 若只补空字段, 旧节点已有的
-                    //      path='/' 永远盖不掉 -> 用户体感"导入带 path 的链接, 订阅里 path 还是 /"。
-                    //      仍保护 name/sni 等用户可能手改的字段(不在白名单内, 不覆盖)。
-                    // 覆盖时跳过"默认/空哨兵值", 防止用信息不全的链接把已有真实值反向冲掉:
-                    //   path 的 ''、'/';  host 的 '';  network 的 ''、'tcp';
-                    //   tls 的 'false' -- parse 时 security 缺省即 false, 既可能是"明文"也可能是
-                    //   "链接没写", 二者不可分; 故只升不降(false->true 生效, 已是 tls 的不会被一条
-                    //   漏写 security=tls 的链接降级成明文)。注意 tls 是布尔, false 不会被"补空"分支
-                    //   命中(那条只认 undefined/null/''), 必须在这里显式处理, 否则 security=tls 丢失。
-                    const OVERWRITE_TRANSPORT = { path: ['', '/'], host: [''], network: ['', 'tcp'], tls: ['false'] };
-                    let merged = 0;
-                    for (const k of Object.keys(inc)) {
-                        if (k === 'id' || k === 'name') continue;
-                        const ev = existing[k];
-                        const iv = inc[k];
-                        if (ev === undefined || ev === null || ev === '') {
-                            existing[k] = iv;            // 补空字段
-                            merged++;
-                        } else if (OVERWRITE_TRANSPORT[k]
-                                   && iv != null
-                                   && !OVERWRITE_TRANSPORT[k].includes(String(iv))
-                                   && String(iv) !== String(ev)) {
-                            console.info('[dedup] overwrite transport existingId=' + existing.id + ' name=' + (existing.name || '') + ' key=' + k + ' old=' + JSON.stringify(ev) + ' new=' + JSON.stringify(iv));
-                            existing[k] = iv;            // 用导入值原地更新传输字段
-                            merged++;
-                        }
-                    }
-                    if (merged > 0) {
-                        console.info('[dedup] fp-hit merged fields existingId=' + existing.id + ' count=' + merged);
-                    }
-                    idMap[inc.id] = existing.id;
-                    if (!seenIncoming.has(existing.id)) {
-                        finalIds.push(existing.id);
-                        seenIncoming.add(existing.id);
-                        dupNames.push(existing.name || inc.name || '未知节点');
-                    }
-                    dupCount++;
-                } else {
-                    idMap[inc.id] = inc.id;
-                    fpMap.set(fp, inc);
-                    appendedNodes.push(inc);
-                    if (!seenIncoming.has(inc.id)) {
-                        finalIds.push(inc.id);
-                        seenIncoming.add(inc.id);
-                    }
-                }
-            });
-            console.info('[dedup] incoming=' + (incomingNodes || []).length + ' appended=' + appendedNodes.length + ' reused=' + dupCount);
-            return { appendedNodes, finalIds, idMap, dupCount, dupNames };
+            appendedNodes.forEach(n => { idMap[n.id] = n.id; });
+            console.info('[dedup] skipped, incoming=' + appendedNodes.length);
+            return { appendedNodes, finalIds, idMap, dupCount: 0, dupNames: [] };
         }
 
         // ================= Unified Router for Submission Import Tab =================
@@ -4526,6 +4629,7 @@
             }
             const targetUuid = impersonatedUuid || currentUser.uuid;
             const payload = {
+                skipDedup: true,
                 config: {
                     nodes, groups,
                     busNames: { master: masterControlName, entry: entryBusName, exit: exitBusName, matrix: matrixName },

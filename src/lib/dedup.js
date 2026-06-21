@@ -30,7 +30,11 @@ export function nodeFingerprint(n) {
     } else if (t === 'anytls') {
         auth = (n.pass || '');
     } else if (t === 'socks' || t === 'socks5') {
-        auth = (n.user || '') + ':' + (n.pass || '');
+        const u = (n.user || '').trim();
+        const p = (n.pass || '').trim();
+        // 无认证的 socks 节点: 同一 IP:port 可能是不同优选IP分配,不能合并
+        if (!u && !p) return '';
+        auth = u + ':' + p;
     } else {
         auth = JSON.stringify(n);
     }

@@ -57,8 +57,10 @@ export async function handleSaveConfig(ctx) {
     };
 
     // 与已有配置做指纹去重,完全相同的节点保留原 id+name(浏览器端已做一次,这里再保险一次给外部 API)
+    // 浏览器端保存时传 skipDedup:true 跳过(优选IP场景同一 server:port 可能是不同分配)
+    const skipDedup = !!body.skipDedup;
     const old = await getConfig(env.CALPHER_KV, uuid);
-    const deduped = dedupConfigAgainstExisting(rawSanitized, old, uuid);
+    const deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, old, uuid);
 
     const sanitized = {
         nodes: deduped.nodes,
