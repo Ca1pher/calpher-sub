@@ -62,8 +62,22 @@ export async function handleSaveConfig(ctx) {
     const old = await getConfig(env.CALPHER_KV, uuid);
     const deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, old, uuid);
 
+    // 清理孤儿节点: 删除不属于任何分组的节点
+    const referencedNodeIds = new Set();
+    for (const g of deduped.groups) {
+        if (Array.isArray(g.nodes)) {
+            for (const nid of g.nodes) referencedNodeIds.add(nid);
+        }
+    }
+    const orphansBefore = deduped.nodes.length;
+    const cleanedNodes = deduped.nodes.filter(n => referencedNodeIds.has(n.id));
+    const orphansRemoved = orphansBefore - cleanedNodes.length;
+    if (orphansRemoved > 0) {
+        console.info('[config] orphan-cleanup uuid=' + uuid + ' removed=' + orphansRemoved + ' remaining=' + cleanedNodes.length);
+    }
+
     const sanitized = {
-        nodes: deduped.nodes,
+        nodes: cleanedNodes,
         groups: deduped.groups,
         busNames: rawSanitized.busNames,
         compiledYaml: rawSanitized.compiledYaml,

@@ -36,11 +36,26 @@ function normalizeNodeInput(input, fallbackId) {
     return { node };
 }
 
-// 写回 config: 跑 dedup, 处理 compiledYaml (若调用者未传, 沿用旧的), 自动签 subToken
+// 写回 config: 跑 dedup, 清理孤儿节点, 处理 compiledYaml (若调用者未传, 沿用旧的), 自动签 subToken
 async function persistConfig(env, uuid, user, rawSanitized, oldConfig) {
     const deduped = dedupConfigAgainstExisting(rawSanitized, oldConfig, uuid);
+
+    // 清理孤儿节点: 删除不属于任何分组的节点
+    const referencedNodeIds = new Set();
+    for (const g of deduped.groups) {
+        if (Array.isArray(g.nodes)) {
+            for (const nid of g.nodes) referencedNodeIds.add(nid);
+        }
+    }
+    const orphansBefore = deduped.nodes.length;
+    const cleanedNodes = deduped.nodes.filter(n => referencedNodeIds.has(n.id));
+    const orphansRemoved = orphansBefore - cleanedNodes.length;
+    if (orphansRemoved > 0) {
+        console.info('[crud] orphan-cleanup uuid=' + uuid + ' removed=' + orphansRemoved + ' remaining=' + cleanedNodes.length);
+    }
+
     const sanitized = {
-        nodes: deduped.nodes,
+        nodes: cleanedNodes,
         groups: deduped.groups,
         busNames: rawSanitized.busNames,
         compiledYaml: rawSanitized.compiledYaml,
