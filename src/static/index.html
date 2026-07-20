@@ -4140,31 +4140,34 @@
             //   ❌ 不列 exit 直连版 (exit 走链才通,通过 MATRIX 触达)
             //   ❌ 不列 ENTRY/EXIT 总线 (它们是动态链式的设置组)
             //   ❌ 不列物理节点直挂 (避免主控过乱)
-            yaml += `  # meta-system: master\n`;
-            yaml += `  - name: "${MASTER_NAME}"\n    type: select\n    proxies:\n`;
+            // 仅当存在 entry/exit/relay 分组时才输出主控(纯普通分组时各单组可直接选)
             const exitGroupsArr = groups.filter(g => g.role === 'exit');
-            if (exitGroupsArr.length > 0) {
-                yaml += `      - "${MATRIX_NAME}"\n`;
+            const entryGroups = groups.filter(g => g.role === 'entry');
+            const hasSpecialGroups = groups.some(g => g.role !== 'common');
+            if (hasSpecialGroups) {
+                yaml += `  # meta-system: master\n`;
+                yaml += `  - name: "${MASTER_NAME}"\n    type: select\n    proxies:\n`;
+                if (exitGroupsArr.length > 0) {
+                    yaml += `      - "${MATRIX_NAME}"\n`;
+                }
+                groups.forEach(g => {
+                    if (g.role === 'exit') return; // exit 走链,不在主控直选
+                    yaml += `      - "${groupClashNameMap[g.id]}"\n`;
+                });
+                yaml += `      - "DIRECT"\n`;
+                yaml += `\n`;
             }
-            groups.forEach(g => {
-                if (g.role === 'exit') return; // exit 走链,不在主控直选
-                yaml += `      - "${groupClashNameMap[g.id]}"\n`;
-            });
-            yaml += `      - "DIRECT"\n`;
-            yaml += `\n`;
 
             // 入口总线: 列出所有 role=entry 的用户组(直连版引用)
             // → 用户在 clash 客户端切换它,即可改变"链式中转的前置选择"
-            yaml += `  # meta-system: entry-bus\n`;
-            yaml += `  - name: "${ENTRY_BUS_NAME}"\n    type: select\n    proxies:\n`;
-            const entryGroups = groups.filter(g => g.role === 'entry');
-            if (entryGroups.length === 0) {
-                yaml += `      - "DIRECT"\n`;
-            } else {
+            // 仅在有 entry 分组时输出,否则无意义(但有 exit 分组时仍留作 dialer 目标)
+            if (entryGroups.length > 0 || exitGroupsArr.length > 0) {
+                yaml += `  # meta-system: entry-bus\n`;
+                yaml += `  - name: "${ENTRY_BUS_NAME}"\n    type: select\n    proxies:\n`;
                 entryGroups.forEach(g => yaml += `      - "${groupClashNameMap[g.id]}"\n`);
                 yaml += `      - "DIRECT"\n`;
+                yaml += `\n`;
             }
-            yaml += `\n`;
 
             // 落地总线 + MATRIX: 仅在有 exit 分组时输出(无落地分组时整个链式架构无意义)
             if (exitGroupsArr.length > 0) {
@@ -4272,7 +4275,7 @@
             }
             yaml += `  - GEOSITE,cn,DIRECT\n`;
             yaml += `  - GEOIP,cn,DIRECT\n`;
-            yaml += `  - MATCH,${MASTER_NAME}\n`;
+            yaml += `  - MATCH,${hasSpecialGroups ? MASTER_NAME : "DIRECT"}\n`;
 
             compiledYaml = yaml;
             document.getElementById('output-yaml-box').innerText = yaml;
