@@ -72,11 +72,14 @@ export function nodeToShareLink(n) {
         if (n.type === 'vless') {
             const params = new URLSearchParams();
             if (n.encryption) params.set('encryption', n.encryption);
-            if (n.tls) params.set('security', 'tls');
+            if (n.tls) params.set('security', n.flow ? 'reality' : 'tls');
             if (n.sni) params.set('sni', n.sni);
             params.set('type', n.network || 'tcp');
             if (n.host) params.set('host', n.host);
             if (n.path) params.set('path', n.path);
+            if (n.flow) params.set('flow', n.flow);
+            if (n.pbk) params.set('pbk', n.pbk);
+            if (n.sid) params.set('sid', n.sid);
             if (n.clientFingerprint) params.set('fp', n.clientFingerprint);
             return `vless://${encodeURIComponent(n.uuid || n.user || '')}@${n.server}:${n.port}?${params.toString()}#${name}`;
         }
@@ -122,6 +125,15 @@ export function nodeToShareLink(n) {
             }
             const qs = params.toString();
             return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${qs ? '?' + qs : ''}#${name}`;
+        }
+        if (n.type === 'tuic') {
+            const params = new URLSearchParams();
+            if (n.sni) params.set('sni', n.sni);
+            params.set('alpn', n.alpn || 'h3');
+            if (n.congestionControl) params.set('congestion_control', n.congestionControl);
+            if (n.skipCertVerify) { params.set('insecure', '1'); params.set('allowInsecure', '1'); }
+            const credential = encodeURIComponent((n.uuid || '') + ':' + (n.pass || ''));
+            return `tuic://${credential}@${n.server}:${n.port}?${params.toString()}#${name}`;
         }
         if (n.type === 'anytls') {
             // 标准 URI: anytls://<percent-encoded-pass>@host:port/?sni=&insecure=0|1#name
@@ -225,8 +237,15 @@ export function compileClashYaml(cfg) {
                 const uuid = n.uuid || n.user || '';
                 yaml += `  - name: ${name}\n    type: vless\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
                 yaml += `    uuid: ${uuid}\n    cipher: ${yamlEscape(n.encryption || 'none')}\n    tls: ${!!n.tls}\n`;
+                if (n.flow) yaml += `    flow: ${yamlEscape(n.flow)}\n`;
                 if (n.sni) yaml += `    servername: ${yamlEscape(n.sni)}\n`;
+                if (n.clientFingerprint) yaml += `    client-fingerprint: ${yamlEscape(n.clientFingerprint)}\n`;
                 yaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
+                if (n.flow) {
+                    yaml += `    reality-opts:\n`;
+                    if (n.pbk) yaml += `      publicKey: ${yamlEscape(n.pbk)}\n`;
+                    if (n.sid) yaml += `      shortId: ${yamlEscape(n.sid)}\n`;
+                }
                 if (n.network === 'ws') {
                     yaml += `    ws-opts:\n      path: ${yamlEscape(n.path || '/')}\n`;
                     if (n.host || n.sni) yaml += `      headers:\n        Host: ${yamlEscape(n.host || n.sni)}\n`;
@@ -246,6 +265,13 @@ export function compileClashYaml(cfg) {
                 yaml += `    password: ${yamlEscape(n.pass || '')}\n`;
                 if (n.sni) yaml += `    sni: ${yamlEscape(n.sni)}\n`;
                 if (n.skipCertVerify) yaml += `    skip-cert-verify: true\n`;
+            } else if (n.type === 'tuic') {
+                yaml += `  - name: ${name}\n    type: tuic\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+                yaml += `    uuid: ${yamlEscape(n.uuid || '')}\n    password: ${yamlEscape(n.pass || '')}\n`;
+                yaml += `    alpn: [${yamlEscape(n.alpn || 'h3')}]\n`;
+                if (n.sni) yaml += `    sni: ${yamlEscape(n.sni)}\n`;
+                if (n.congestionControl) yaml += `    congestion-controller: ${yamlEscape(n.congestionControl)}\n`;
+                yaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
             } else if (n.type === 'socks' || n.type === 'socks5') {
                 yaml += `  - name: ${name}\n    type: socks5\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
                 if (n.user) yaml += `    username: ${yamlEscape(n.user)}\n`;

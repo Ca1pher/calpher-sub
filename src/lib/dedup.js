@@ -29,6 +29,9 @@ export function nodeFingerprint(n) {
         auth = (n.pass || '');
     } else if (t === 'anytls') {
         auth = (n.pass || '');
+    } else if (t === 'tuic') {
+        auth = (n.uuid || '') + ':' + (n.pass || '');
+        auth = (n.pass || '');
     } else if (t === 'socks' || t === 'socks5') {
         const u = (n.user || '').trim();
         const p = (n.pass || '').trim();

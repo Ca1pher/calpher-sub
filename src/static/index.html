@@ -876,6 +876,7 @@
                         <option value="ss">Shadowsocks</option>
                         <option value="trojan">Trojan</option>
                         <option value="hysteria2">Hysteria2</option>
+                        <option value="tuic">TUIC</option>
                         <option value="anytls">AnyTLS</option>
                     </select>
                 </div>
@@ -960,12 +961,26 @@
                         <label class="block text-xs font-semibold text-slate-500 mb-1">Path / 路径 (ws/grpc)</label>
                         <input type="text" id="man-vmess-path" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="留空表示不带 path">
                     </div>
-                    <!-- VLESS 专属: 加密(标准恒为 none) -->
+                    <!-- VLESS 专属: 加密 + Reality 字段 -->
                     <div id="man-vless-extra">
                         <label class="block text-xs font-semibold text-slate-500 mb-1">加密 (Encryption)</label>
                         <select id="man-vless-encryption" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
                             <option value="none">none</option>
                         </select>
+                        <div class="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Flow (Reality)</label>
+                                <input type="text" id="man-vless-flow" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="xtls-rprx-vision">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">PublicKey (pbk)</label>
+                                <input type="text" id="man-vless-pbk" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="Reality 公钥">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">ShortId (sid)</label>
+                                <input type="text" id="man-vless-sid" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="留空默认">
+                            </div>
+                        </div>
                     </div>
                     <!-- VMess 专属: alterId + 安全算法 -->
                     <div id="man-vmess-extra" class="grid grid-cols-2 gap-2">
@@ -1097,6 +1112,44 @@
                                 <span>跳过证书校验</span>
                             </label>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 动态凭证字段 TUIC -->
+                <div id="man-tuic-fields" class="space-y-2 hidden">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">用户 UUID</label>
+                            <input type="text" id="man-tuic-uuid" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="TUIC UUID">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">密码 (Password)</label>
+                            <input type="password" id="man-tuic-pass" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="TUIC Password">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">SNI / 域名校验</label>
+                            <input type="text" id="man-tuic-sni" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="example.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">ALPN</label>
+                            <input type="text" id="man-tuic-alpn" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="h3">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">拥塞控制</label>
+                            <select id="man-tuic-congestion" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                                <option value="bbr">bbr</option>
+                                <option value="cubic">cubic</option>
+                                <option value="new_reno">new_reno</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                            <input type="checkbox" id="man-tuic-skip-cert" class="w-3.5 h-3.5">
+                            <span>跳过证书校验 (insecure)</span>
+                        </label>
                     </div>
                 </div>
 
@@ -1617,6 +1670,7 @@
                 else if (node.type === 'trojan') badgeClass = "bg-rose-50 text-rose-700 border border-rose-200";
                 else if (node.type === 'hysteria2' || node.type === 'hy2') badgeClass = "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200";
                 else if (node.type === 'anytls') badgeClass = "bg-sky-50 text-sky-700 border border-sky-200";
+                else if (node.type === 'tuic') badgeClass = "bg-cyan-50 text-cyan-700 border border-cyan-200";
 
                 const isSelected = selectedNodeIds.includes(node.id);
                 const tr = document.createElement('tr');
@@ -2088,6 +2142,9 @@
                 document.getElementById('man-vmess-path').value = n.path || '';
                 if (n.type === 'vless') {
                     document.getElementById('man-vless-encryption').value = n.encryption || 'none';
+                    document.getElementById('man-vless-flow').value = n.flow || '';
+                    document.getElementById('man-vless-pbk').value = n.pbk || '';
+                    document.getElementById('man-vless-sid').value = n.sid || '';
                 } else {
                     document.getElementById('man-vmess-aid').value = (n.alterId != null ? n.alterId : 0);
                     document.getElementById('man-vmess-cipher').value = n.cipher || 'auto';
@@ -2113,6 +2170,13 @@
                 document.getElementById('man-anytls-fingerprint').value = n.clientFingerprint || '';
                 document.getElementById('man-anytls-udp').checked = !!n.udp;
                 document.getElementById('man-anytls-skip-cert').checked = !!n.skipCertVerify;
+            } else if (n.type === 'tuic') {
+                document.getElementById('man-tuic-uuid').value = n.uuid || '';
+                document.getElementById('man-tuic-pass').value = n.pass || '';
+                document.getElementById('man-tuic-sni').value = n.sni || '';
+                document.getElementById('man-tuic-alpn').value = n.alpn || 'h3';
+                document.getElementById('man-tuic-congestion').value = n.congestionControl || 'bbr';
+                document.getElementById('man-tuic-skip-cert').checked = !!n.skipCertVerify;
             }
         }
         function closeManualModal() {
@@ -2349,6 +2413,7 @@
             document.getElementById('man-trojan-fields').classList.add('hidden');
             document.getElementById('man-hy2-fields').classList.add('hidden');
             document.getElementById('man-anytls-fields').classList.add('hidden');
+            document.getElementById('man-tuic-fields').classList.add('hidden');
 
             if (type === 'socks') {
                 document.getElementById('man-socks-credential-fields').classList.remove('hidden');
@@ -2366,6 +2431,8 @@
                 document.getElementById('man-hy2-fields').classList.remove('hidden');
             } else if (type === 'anytls') {
                 document.getElementById('man-anytls-fields').classList.remove('hidden');
+            } else if (type === 'tuic') {
+                document.getElementById('man-tuic-fields').classList.remove('hidden');
             }
         }
 
@@ -2463,13 +2530,17 @@
             const result = { server, port: parseInt(port) || 443 };
 
             if (scheme === 'vless') {
+                const sec = qp.get('security') || '';
                 Object.assign(result, {
                     type: 'vless', uuid: decodeURIComponent(credentials),
                     encryption: qp.get('encryption') || 'none',
                     network: qp.get('type') || 'tcp',
-                    tls: (qp.get('security') || '') === 'tls',
+                    tls: sec === 'tls' || sec === 'reality',
                     sni: qp.get('sni') || '', host: qp.get('host') || '',
                     path: qp.get('path') ? decodeURIComponent(qp.get('path')) : '/',
+                    flow: qp.get('flow') || '',
+                    pbk: qp.get('pbk') || '',
+                    sid: qp.get('sid') || '',
                     clientFingerprint: qp.get('fp') || qp.get('client-fingerprint') || ''
                 });
             } else if (scheme === 'ss') {
@@ -2496,6 +2567,18 @@
                     sni: qp.get('sni') || '',
                     skipCertVerify: qp.get('insecure') === '1' || qp.get('allowInsecure') === '1',
                     pinSHA256: qp.get('pinSHA256') || ''
+                });
+            } else if (scheme === 'tuic') {
+                const decodedCreds = decodeURIComponent(credentials);
+                const colonIdx = decodedCreds.indexOf(':');
+                const uuid = colonIdx !== -1 ? decodedCreds.substring(0, colonIdx) : decodedCreds;
+                const pass = colonIdx !== -1 ? decodedCreds.substring(colonIdx + 1) : '';
+                Object.assign(result, {
+                    type: 'tuic', uuid, pass,
+                    sni: qp.get('sni') || '',
+                    alpn: qp.get('alpn') || 'h3',
+                    congestionControl: qp.get('congestion_control') || 'bbr',
+                    skipCertVerify: qp.get('insecure') === '1' || qp.get('allowInsecure') === '1'
                 });
             } else if (scheme === 'anytls') {
                 Object.assign(result, {
@@ -2556,12 +2639,25 @@
                 if (f.type === 'trojan') document.getElementById('man-trojan-sni').value = f.sni;
                 else if (f.type === 'hysteria2' || f.type === 'hy2') document.getElementById('man-hy2-sni').value = f.sni;
                 else if (f.type === 'anytls') document.getElementById('man-anytls-sni').value = f.sni;
+                else if (f.type === 'tuic') document.getElementById('man-tuic-sni').value = f.sni;
             }
             if (f.skipCertVerify !== undefined) {
                 if (f.type === 'hysteria2' || f.type === 'hy2') document.getElementById('man-hy2-skip-cert').checked = f.skipCertVerify;
                 else if (f.type === 'anytls') document.getElementById('man-anytls-skip-cert').checked = f.skipCertVerify;
+                else if (f.type === 'tuic') document.getElementById('man-tuic-skip-cert').checked = f.skipCertVerify;
             }
             if (f.pinSHA256) document.getElementById('man-hy2-pin-sha256').value = f.pinSHA256;
+            if (f.type === 'tuic') {
+                document.getElementById('man-tuic-uuid').value = f.uuid || '';
+                document.getElementById('man-tuic-pass').value = f.pass || '';
+                document.getElementById('man-tuic-alpn').value = f.alpn || 'h3';
+                document.getElementById('man-tuic-congestion').value = f.congestionControl || 'bbr';
+            }
+            if (f.type === 'vless') {
+                document.getElementById('man-vless-flow').value = f.flow || '';
+                document.getElementById('man-vless-pbk').value = f.pbk || '';
+                document.getElementById('man-vless-sid').value = f.sid || '';
+            }
             showToast('链接已解析并填充表单,请检查后保存');
         }
 
@@ -2595,6 +2691,8 @@
                 auth = (n.pass || '');
             } else if (t === 'anytls') {
                 auth = (n.pass || '');
+            } else if (t === 'tuic') {
+                auth = (n.uuid || '') + ':' + (n.pass || '');
             } else if (t === 'socks' || t === 'socks5') {
                 const u = (n.user || '').trim();
                 const p = (n.pass || '').trim();
@@ -2766,8 +2864,11 @@
                             port: parseInt(port) || 443,
                             uuid: uuid,
                             encryption: encryption,
-                            tls: security === 'tls',
+                            tls: security === 'tls' || security === 'reality',
                             sni: sni,
+                            flow: queryParams.get('flow') || '',
+                            pbk: queryParams.get('pbk') || '',
+                            sid: queryParams.get('sid') || '',
                             clientFingerprint: clientFingerprint,
                             network: type,
                             host: host,
@@ -2879,6 +2980,27 @@
                         });
                         parsedCount++;
                     }
+                    else if (scheme === 'tuic') {
+                        const decodedCreds = decodeURIComponent(credentials);
+                        const colonIdx = decodedCreds.indexOf(':');
+                        const uuid = colonIdx !== -1 ? decodedCreds.substring(0, colonIdx) : decodedCreds;
+                        const pass = colonIdx !== -1 ? decodedCreds.substring(colonIdx + 1) : '';
+
+                        incoming.push({
+                            id: nid,
+                            name: remark,
+                            type: 'tuic',
+                            server: server,
+                            port: parseInt(port) || 443,
+                            uuid: uuid,
+                            pass: pass,
+                            sni: queryParams.get('sni') || '',
+                            alpn: queryParams.get('alpn') || 'h3',
+                            congestionControl: queryParams.get('congestion_control') || 'bbr',
+                            skipCertVerify: queryParams.get('insecure') === '1' || queryParams.get('allowInsecure') === '1'
+                        });
+                        parsedCount++;
+                    }
                 } catch(e) {
                     console.error("分享链接解析失败 line=" + line + " err=" + (e && e.message));
                 }
@@ -2896,7 +3018,7 @@
             renderNodesTable();
             renderTopology();
             if (parsedCount === 0) {
-                showCustomAlert('未解析到节点', '请检查链接格式,目前支持 vmess/vless/ss/trojan/hysteria2/socks5。');
+                showCustomAlert('未解析到节点', '请检查链接格式,目前支持 vmess/vless/ss/trojan/hysteria2/tuic/socks5。');
                 return;
             }
             const dupMsg = dedup.dupCount > 0
@@ -3064,6 +3186,11 @@
                     }
                     if (nObj.type === 'vless') {
                         nObj.encryption = stripQuotesHelper(item.cipher || item.encryption || 'none');
+                        nObj.flow = stripQuotesHelper(item.flow || '');
+                        nObj.pbk = stripQuotesHelper(item['reality-opts'] ? parseFlowObject(item['reality-opts']).publicKey : '');
+                        nObj.sid = stripQuotesHelper(item['reality-opts'] ? parseFlowObject(item['reality-opts']).shortId : '');
+                        if (!nObj.pbk) nObj.pbk = stripQuotesHelper(item.pbk || '');
+                        if (!nObj.sid) nObj.sid = stripQuotesHelper(item.sid || '');
                     } else {
                         nObj.cipher = stripQuotesHelper(item.cipher || 'auto');
                         nObj.alterId = parseInt(stripQuotesHelper(item.alterId || '0')) || 0;
@@ -3108,6 +3235,14 @@
                     nObj.skipCertVerify = parseBool(item['skip-cert-verify']);
                     nObj.clientFingerprint = stripQuotesHelper(item['client-fingerprint'] || '');
                     console.info('[import] anytls node name=' + rawName + ' server=' + nObj.server + ' fp=' + nObj.clientFingerprint);
+                } else if (nObj.type === 'tuic') {
+                    nObj.uuid = stripQuotesHelper(item.uuid || '');
+                    nObj.pass = stripQuotesHelper(item.password || '');
+                    nObj.sni = stripQuotesHelper(item.sni || '');
+                    nObj.alpn = stripQuotesHelper(item.alpn || 'h3');
+                    nObj.congestionControl = stripQuotesHelper(item['congestion-controller'] || 'bbr');
+                    nObj.skipCertVerify = parseBool(item['skip-cert-verify']);
+                    console.info('[import] tuic node name=' + rawName + ' server=' + nObj.server + ' uuid=' + nObj.uuid);
                 }
                 importedPhysicalNodes.push(nObj);
             });
@@ -3495,6 +3630,7 @@
                             const stream = out.streamSettings || {};
                             const wsOpts = stream.wsSettings || {};
                             const tlsSettings = stream.tlsSettings || {};
+                            const realitySettings = stream.realitySettings || {};
                             
                             parsedNodes.push({
                                 id: nid,
@@ -3505,9 +3641,9 @@
                                 uuid: user ? user.id : '',
                                 alterId: user ? (parseInt(user.alterId) || 0) : 0,
                                 cipher: 'auto',
-                                tls: stream.security === 'tls',
-                                sni: tlsSettings.serverName || '',
-                                clientFingerprint: tlsSettings.fingerprint || '',
+                                tls: stream.security === 'tls' || stream.security === 'reality',
+                                sni: tlsSettings.serverName || realitySettings.serverName || '',
+                                clientFingerprint: tlsSettings.fingerprint || realitySettings.fingerprint || '',
                                 network: stream.network || 'tcp',
                                 host: wsOpts.headers ? (wsOpts.headers.Host || wsOpts.headers.host || '') : '',
                                 path: wsOpts.path || '/'
@@ -3521,6 +3657,7 @@
                             const stream = out.streamSettings || {};
                             const wsOpts = stream.wsSettings || {};
                             const tlsSettings = stream.tlsSettings || {};
+                            const realitySettings = stream.realitySettings || {};
                             
                             parsedNodes.push({
                                 id: nid,
@@ -3530,9 +3667,12 @@
                                 port: parseInt(serverInfo.port) || 443,
                                 uuid: user ? user.id : '',
                                 encryption: user ? (user.encryption || 'none') : 'none',
-                                tls: stream.security === 'tls',
-                                sni: tlsSettings.serverName || '',
-                                clientFingerprint: tlsSettings.fingerprint || '',
+                                tls: stream.security === 'tls' || stream.security === 'reality',
+                                sni: tlsSettings.serverName || realitySettings.serverName || '',
+                                flow: user ? (user.flow || '') : '',
+                                pbk: realitySettings.publicKey || '',
+                                sid: realitySettings.shortId || '',
+                                clientFingerprint: tlsSettings.fingerprint || realitySettings.fingerprint || '',
                                 network: stream.network || 'tcp',
                                 host: wsOpts.headers ? (wsOpts.headers.Host || wsOpts.headers.host || '') : '',
                                 path: wsOpts.path || '/'
@@ -3626,6 +3766,9 @@
                 };
                 if (type === 'vless') {
                     extraProps.encryption = document.getElementById('man-vless-encryption').value || 'none';
+                    extraProps.flow = document.getElementById('man-vless-flow').value.trim();
+                    extraProps.pbk = document.getElementById('man-vless-pbk').value.trim();
+                    extraProps.sid = document.getElementById('man-vless-sid').value.trim();
                 } else {
                     extraProps.alterId = parseInt(document.getElementById('man-vmess-aid').value) || 0;
                     extraProps.cipher = document.getElementById('man-vmess-cipher').value || 'auto';
@@ -3663,10 +3806,19 @@
             } else if (type === 'anytls') {
                 extraProps = {
                     pass: document.getElementById('man-anytls-pass').value,
-                    sni: document.getElementById('man-anytls-sni').value,
+                    sni: document.getElementById('man-anytls-sni').value.trim(),
                     clientFingerprint: document.getElementById('man-anytls-fingerprint').value,
                     udp: document.getElementById('man-anytls-udp').checked,
                     skipCertVerify: document.getElementById('man-anytls-skip-cert').checked
+                };
+            } else if (type === 'tuic') {
+                extraProps = {
+                    uuid: document.getElementById('man-tuic-uuid').value.trim(),
+                    pass: document.getElementById('man-tuic-pass').value,
+                    sni: document.getElementById('man-tuic-sni').value.trim(),
+                    alpn: document.getElementById('man-tuic-alpn').value.trim() || 'h3',
+                    congestionControl: document.getElementById('man-tuic-congestion').value,
+                    skipCertVerify: document.getElementById('man-tuic-skip-cert').checked
                 };
             }
 
@@ -3907,9 +4059,15 @@
                 pYaml += `    uuid: ${n.uuid || n.user || ''}\n`;
                 pYaml += `    cipher: "${n.encryption || 'none'}"\n`;
                 pYaml += `    tls: ${!!n.tls}\n`;
+                if (n.flow) pYaml += `    flow: ${n.flow}\n`;
                 if (n.sni) pYaml += `    servername: "${n.sni}"\n`;
                 if (n.clientFingerprint) pYaml += `    client-fingerprint: ${n.clientFingerprint}\n`;
                 pYaml += `    network: ${n.network || 'tcp'}\n`;
+                if (n.flow) {
+                    pYaml += `    reality-opts:\n`;
+                    if (n.pbk) pYaml += `      publicKey: "${n.pbk}"\n`;
+                    if (n.sid) pYaml += `      shortId: "${n.sid}"\n`;
+                }
                 if (n.network === 'ws') {
                     const wsHost = n.host || n.sni || "";
                     pYaml += `    ws-opts:\n`;
@@ -3972,6 +4130,17 @@
                         pYaml += `        Host: "${wsHost}"\n`;
                     }
                 }
+                pYaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
+            } else if (n.type === 'tuic') {
+                pYaml += `  - name: "${pName}"\n`;
+                pYaml += `    type: tuic\n`;
+                pYaml += `    server: ${n.server}\n`;
+                pYaml += `    port: ${n.port}\n`;
+                pYaml += `    uuid: ${n.uuid || ''}\n`;
+                pYaml += `    password: "${n.pass || ''}"\n`;
+                pYaml += `    alpn: [${n.alpn || 'h3'}]\n`;
+                if (n.sni) pYaml += `    sni: "${n.sni}"\n`;
+                if (n.congestionControl) pYaml += `    congestion-controller: ${n.congestionControl}\n`;
                 pYaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
             } else if (n.type === 'anytls') {
                 pYaml += `  - name: "${pName}"\n`;
@@ -4408,11 +4577,14 @@
                 if (n.type === 'vless') {
                     const params = new URLSearchParams();
                     if (n.encryption) params.set('encryption', n.encryption);
-                    if (n.tls) params.set('security', 'tls');
+                    if (n.tls) params.set('security', n.flow ? 'reality' : 'tls');
                     if (n.sni) params.set('sni', n.sni);
                     params.set('type', n.network || 'tcp');
                     if (n.host) params.set('host', n.host);
                     if (n.path) params.set('path', n.path);
+                    if (n.flow) params.set('flow', n.flow);
+                    if (n.pbk) params.set('pbk', n.pbk);
+                    if (n.sid) params.set('sid', n.sid);
                     if (n.clientFingerprint) params.set('fp', n.clientFingerprint);
                     return `vless://${encodeURIComponent(n.uuid || '')}@${n.server}:${n.port}?${params.toString()}#${name}`;
                 }
@@ -4475,6 +4647,15 @@
                     }
                     const qs = params.toString();
                     return `hysteria2://${encodeURIComponent(n.pass || '')}@${n.server}:${n.port}${qs ? '?' + qs : ''}#${name}`;
+                }
+                if (n.type === 'tuic') {
+                    const params = new URLSearchParams();
+                    if (n.sni) params.set('sni', n.sni);
+                    params.set('alpn', n.alpn || 'h3');
+                    if (n.congestionControl) params.set('congestion_control', n.congestionControl);
+                    if (n.skipCertVerify) { params.set('insecure', '1'); params.set('allowInsecure', '1'); }
+                    const credential = encodeURIComponent((n.uuid || '') + ':' + (n.pass || ''));
+                    return `tuic://${credential}@${n.server}:${n.port}?${params.toString()}#${name}`;
                 }
                 if (n.type === 'anytls') {
                     // 标准 URI: anytls://<percent-encoded-pass>@host:port/?sni=&insecure=0|1#name

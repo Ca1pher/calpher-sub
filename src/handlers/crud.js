@@ -23,7 +23,7 @@ function ensureCfg(cfg) {
 function normalizeNodeInput(input, fallbackId) {
     if (!input || typeof input !== 'object') return { err: 'node 字段缺失' };
     const type = String(input.type || '').toLowerCase();
-    const allowed = ['vmess', 'vless', 'ss', 'shadowsocks', 'trojan', 'hysteria2', 'hy2', 'socks', 'socks5', 'anytls'];
+    const allowed = ['vmess', 'vless', 'ss', 'shadowsocks', 'trojan', 'hysteria2', 'hy2', 'socks', 'socks5', 'anytls', 'tuic'];
     if (!allowed.includes(type)) return { err: '不支持的节点协议: ' + (input.type || '空') };
     const name = String(input.name || '').trim();
     const server = String(input.server || '').trim();
