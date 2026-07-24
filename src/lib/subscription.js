@@ -243,8 +243,8 @@ export function compileClashYaml(cfg) {
                 yaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
                 if (n.flow) {
                     yaml += `    reality-opts:\n`;
-                    if (n.pbk) yaml += `      publicKey: ${yamlEscape(n.pbk)}\n`;
-                    if (n.sid) yaml += `      shortId: ${yamlEscape(n.sid)}\n`;
+                    if (n.pbk) yaml += `      public-key: ${yamlEscape(n.pbk)}\n`;
+                    if (n.sid) yaml += `      short-id: ${yamlEscape(n.sid)}\n`;
                 }
                 if (n.network === 'ws') {
                     yaml += `    ws-opts:\n      path: ${yamlEscape(n.path || '/')}\n`;

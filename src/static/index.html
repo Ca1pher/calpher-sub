@@ -3187,10 +3187,9 @@
                     if (nObj.type === 'vless') {
                         nObj.encryption = stripQuotesHelper(item.cipher || item.encryption || 'none');
                         nObj.flow = stripQuotesHelper(item.flow || '');
-                        nObj.pbk = stripQuotesHelper(item['reality-opts'] ? parseFlowObject(item['reality-opts']).publicKey : '');
-                        nObj.sid = stripQuotesHelper(item['reality-opts'] ? parseFlowObject(item['reality-opts']).shortId : '');
-                        if (!nObj.pbk) nObj.pbk = stripQuotesHelper(item.pbk || '');
-                        if (!nObj.sid) nObj.sid = stripQuotesHelper(item.sid || '');
+                        const realityOpts = item['reality-opts'] ? parseFlowObject(item['reality-opts']) : {};
+                        nObj.pbk = stripQuotesHelper(realityOpts['public-key'] || realityOpts.publicKey || '');
+                        nObj.sid = stripQuotesHelper(realityOpts['short-id'] || realityOpts.shortId || '');
                     } else {
                         nObj.cipher = stripQuotesHelper(item.cipher || 'auto');
                         nObj.alterId = parseInt(stripQuotesHelper(item.alterId || '0')) || 0;
@@ -4065,8 +4064,8 @@
                 pYaml += `    network: ${n.network || 'tcp'}\n`;
                 if (n.flow) {
                     pYaml += `    reality-opts:\n`;
-                    if (n.pbk) pYaml += `      publicKey: "${n.pbk}"\n`;
-                    if (n.sid) pYaml += `      shortId: "${n.sid}"\n`;
+                    if (n.pbk) pYaml += `      public-key: "${n.pbk}"\n`;
+                    if (n.sid) pYaml += `      short-id: "${n.sid}"\n`;
                 }
                 if (n.network === 'ws') {
                     const wsHost = n.host || n.sni || "";
