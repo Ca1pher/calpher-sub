@@ -4062,9 +4062,9 @@
                 if (n.sni) pYaml += `    servername: "${n.sni}"\n`;
                 if (n.clientFingerprint) pYaml += `    client-fingerprint: ${n.clientFingerprint}\n`;
                 pYaml += `    network: ${n.network || 'tcp'}\n`;
-                if (n.flow) {
+                if (n.pbk) {
                     pYaml += `    reality-opts:\n`;
-                    if (n.pbk) pYaml += `      public-key: "${n.pbk}"\n`;
+                    pYaml += `      public-key: "${n.pbk}"\n`;
                     if (n.sid) pYaml += `      short-id: "${n.sid}"\n`;
                 }
                 if (n.network === 'ws') {

@@ -29,8 +29,8 @@ export async function handlePublicSubscription(env, request, path) {
 
     if (kind === 'clash') {
         let yaml = cfg.compiledYaml || '';
-        // 旧缓存可能含 uuid: undefined (非法 YAML), 降级到服务端生成
-        if (!yaml || yaml.includes('uuid: undefined')) {
+        // 旧缓存可能含 uuid: undefined 或 reality-opts 旧格式, 降级到服务端生成
+        if (!yaml || yaml.includes('uuid: undefined') || yaml.includes('publicKey:') || yaml.includes('shortId:')) {
             yaml = compileClashYaml(cfg);
             if (!yaml) {
                 return text('# 没有可用节点\n', 404, { 'Content-Disposition': 'inline; filename="config.yaml"' });

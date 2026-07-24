@@ -241,9 +241,9 @@ export function compileClashYaml(cfg) {
                 if (n.sni) yaml += `    servername: ${yamlEscape(n.sni)}\n`;
                 if (n.clientFingerprint) yaml += `    client-fingerprint: ${yamlEscape(n.clientFingerprint)}\n`;
                 yaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
-                if (n.flow) {
+                if (n.pbk) {
                     yaml += `    reality-opts:\n`;
-                    if (n.pbk) yaml += `      public-key: ${yamlEscape(n.pbk)}\n`;
+                    yaml += `      public-key: ${yamlEscape(n.pbk)}\n`;
                     if (n.sid) yaml += `      short-id: ${yamlEscape(n.sid)}\n`;
                 }
                 if (n.network === 'ws') {
