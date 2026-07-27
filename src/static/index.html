@@ -670,6 +670,27 @@
             color: var(--brass); margin-right: 2px;
         }
 
+        /* —— 主表格搜索框 —— */
+        .node-search-wrap { position: relative; display: flex; align-items: center; }
+        .node-search-icon {
+            position: absolute; left: 11px; font-size: 11px; color: var(--ink-soft); opacity: .6; pointer-events: none;
+        }
+        .node-search-input {
+            width: 100%; padding: 7px 30px 7px 30px; border-radius: 9px;
+            font-size: 12px; color: var(--ink);
+            background: var(--paper-2); border: 1px solid var(--line);
+            outline: none; transition: border-color .16s ease, background .16s ease;
+        }
+        .node-search-input:focus { border-color: var(--brass-line); background: var(--paper); }
+        .node-search-input::placeholder { color: var(--ink-soft); opacity: .55; }
+        .node-search-clear {
+            position: absolute; right: 8px; display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; border-radius: 999px; cursor: pointer;
+            color: var(--ink-soft); background: transparent; border: 0; font-size: 11px;
+            transition: background .14s ease, color .14s ease;
+        }
+        .node-search-clear:hover { background: var(--brass-soft); color: var(--brass-ink); }
+
         /* —— 减少动效偏好 —— */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
@@ -799,6 +820,19 @@
                         <!-- v2rayN 风格的分组 Tab 栏 -->
                         <div id="group-tabs-bar" class="flex gap-1 bg-slate-100 border-b border-slate-200 p-1 shrink-0 overflow-x-auto no-scrollbar">
                             <!-- 动态加载分组 Tab -->
+                        </div>
+
+                        <!-- 搜索框：按名称 / 地址 / 协议实时过滤 -->
+                        <div class="px-3 py-2 border-b border-slate-200 shrink-0">
+                            <div class="node-search-wrap">
+                                <i class="fa-solid fa-magnifying-glass node-search-icon"></i>
+                                <input type="text" id="node-search-input" oninput="onNodeSearchInput(this.value)"
+                                    placeholder="搜索节点：名称 / 地址 / 协议"
+                                    class="node-search-input" autocomplete="off">
+                                <button id="node-search-clear" onclick="clearNodeSearch()" class="node-search-clear hidden" title="清除">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- 选中状态栏(显示快捷键提示) -->
@@ -1853,6 +1887,7 @@
 
         let tempSelectedNodeIds = [];
         let currentSearchQuery = "";
+        let mainSearchQuery = ""; // 主表格搜索关键字（仅过滤显示，不改节点顺序）
         let activeImportTab = "share"; // "share" | "clash" | "v2ray"
         let activeGroupTab = "all"; // 这里改为存储 groupId，"all" 表示全部
 
@@ -2133,6 +2168,32 @@
                 }
             }
 
+            // 2.1 搜索过滤（只影响显示，不改动节点真实顺序/位置）
+            const q = (mainSearchQuery || '').toLowerCase().trim();
+            const groupFilteredCount = filteredNodes.length;
+            if (q) {
+                filteredNodes = filteredNodes.filter(n =>
+                    (n.name || '').toLowerCase().includes(q) ||
+                    (n.server || '').toLowerCase().includes(q) ||
+                    (String(n.port) || '').includes(q) ||
+                    (n.type || '').toLowerCase().includes(q));
+            }
+
+            // 搜索无结果的空态（与"分组本身为空"区分开）
+            if (q && filteredNodes.length === 0 && groupFilteredCount > 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-16 text-slate-400 italic">
+                            <i class="fa-solid fa-magnifying-glass text-2xl mb-2 block"></i>
+                            没有匹配「${escapeHtml(mainSearchQuery)}」的节点
+                            <button onclick="clearNodeSearch()" class="block mx-auto mt-2 text-indigo-600 hover:underline not-italic text-xs">清除搜索</button>
+                        </td>
+                    </tr>
+                `;
+                updateSelectionStatusBar([]);
+                return;
+            }
+
             if (filteredNodes.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
@@ -2284,6 +2345,22 @@
             document.getElementById('node-context-menu').classList.add('hidden');
             ctxMenuTargetId = null;
         }
+        // ================= 主表格搜索 =================
+        function onNodeSearchInput(val) {
+            mainSearchQuery = val || '';
+            const clearBtn = document.getElementById('node-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !mainSearchQuery);
+            renderNodesTable();
+        }
+        function clearNodeSearch() {
+            mainSearchQuery = '';
+            const input = document.getElementById('node-search-input');
+            if (input) input.value = '';
+            const clearBtn = document.getElementById('node-search-clear');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            renderNodesTable();
+        }
+
         function ctxMenuAction(act) {
             const ids = selectedNodeIds.length > 0 ? [...selectedNodeIds] : (ctxMenuTargetId ? [ctxMenuTargetId] : []);
             hideNodeContextMenu();
@@ -2335,6 +2412,12 @@
             carryNodeId = null;
             const bar = document.getElementById('carry-bar');
             bar.classList.add('hidden'); bar.classList.remove('flex');
+            // 放下后清除搜索，确保能看到落点（被移动的节点可能不匹配搜索词）
+            if (mainSearchQuery) {
+                mainSearchQuery = '';
+                const si = document.getElementById('node-search-input'); if (si) si.value = '';
+                const cb = document.getElementById('node-search-clear'); if (cb) cb.classList.add('hidden');
+            }
             renderNodesTable();
             renderTopology();
             highlightNodeRow(dropped);
@@ -2486,9 +2569,12 @@
             if (!bar) return;
             const selCount = selectedNodeIds.filter(id => filteredNodes.some(n => n.id === id)).length;
             const total = filteredNodes.length;
+            const searchTag = mainSearchQuery
+                ? `  ·  <span class="text-amber-600">搜索命中 ${total} 条</span>`
+                : '';
             bar.innerHTML = selCount > 0
                 ? `已选 <strong class="text-indigo-600">${selCount}</strong> / ${total} 个节点  ·  <span class="text-slate-400">Delete=删除 · Ctrl/⌘+C=复制分享链接 · Ctrl/⌘+A=全选 · Esc=取消</span>`
-                : `共 ${total} 个节点  ·  <span class="text-slate-400">单击选中 · 双击编辑 · 右键菜单 · <strong class="text-slate-500 font-semibold">点序号改位置</strong></span>`;
+                : `共 ${total} 个节点${searchTag}  ·  <span class="text-slate-400">单击选中 · 双击编辑 · 右键菜单 · <strong class="text-slate-500 font-semibold">点序号改位置</strong></span>`;
         }
 
         // ================= 节点拖拽排序 =================
