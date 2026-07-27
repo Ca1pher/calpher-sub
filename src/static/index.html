@@ -4443,7 +4443,19 @@
             }
             yaml += `  - GEOSITE,cn,DIRECT\n`;
             yaml += `  - GEOIP,cn,DIRECT\n`;
-            yaml += `  - MATCH,${hasSpecialGroups ? MASTER_NAME : "DIRECT"}\n`;
+
+            // MATCH rule: route to common groups if they exist, otherwise master or DIRECT
+            const commonGroups = groups.filter(g => g.role === 'common');
+            if (hasSpecialGroups) {
+                yaml += `  - MATCH,${MASTER_NAME}\n`;
+            } else if (commonGroups.length === 1) {
+                yaml += `  - MATCH,"${groupClashNameMap[commonGroups[0].id]}"\n`;
+            } else if (commonGroups.length > 1) {
+                // Multiple common groups: use first one as MATCH target
+                yaml += `  - MATCH,"${groupClashNameMap[commonGroups[0].id]}"\n`;
+            } else {
+                yaml += `  - MATCH,DIRECT\n`;
+            }
 
             compiledYaml = yaml;
             document.getElementById('output-yaml-box').innerText = yaml;
