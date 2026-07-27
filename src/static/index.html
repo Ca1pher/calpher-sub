@@ -5,25 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calpher 订阅管理</title>
     <meta name="description" content="Calpher 订阅管理 -- 多用户 Clash/V2Ray/小火箭 订阅编排与分发平台">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%234f46e5'/%3E%3Cpath d='M20 22 L20 42 L28 42 L28 36 L24 36 L24 28 L28 28 L28 22 Z M36 22 L44 32 L36 42 L40 42 L48 32 L40 22 Z' fill='white'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23241d10'/%3E%3Cpath d='M16 20 H35 A9 9 0 0 1 35 38 H29 A9 9 0 0 0 29 56 H50' fill='none' stroke='%23d6ab5f' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='20' r='6' fill='%23241d10' stroke='%23e6c583' stroke-width='4'/%3E%3Ccircle cx='50' cy='56' r='6' fill='%23241d10' stroke='%23e6c583' stroke-width='4'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         /* ============================================================
          * 设计令牌：浅色主题（默认）
          * 暗色主题通过 [data-theme="dark"] 覆写
          * ============================================================ */
         :root {
-            --ink: #0b1220;
-            --ink-soft: #1f2937;
-            --paper: #fbfbfd;
-            --paper-2: #f4f4f6;
-            --line: #e6e7eb;
-            --accent: #2f3340;
+            --ink: #17140d;
+            --ink-soft: #353024;
+            --paper: #faf8f3;
+            --paper-2: #f1ede4;
+            --line: #e7e2d6;
+            --accent: #8a6a2f;
+
+            /* 品牌主色：黄铜 (brass) —— 一个克制的暖色重音 */
+            --brass: #a97b34;
+            --brass-strong: #8d6526;
+            --brass-soft: rgba(169, 123, 52, 0.12);
+            --brass-line: rgba(169, 123, 52, 0.30);
+            --brass-ink: #6f5220;
+            --display: "Space Grotesk", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
             /* 滚动条 */
             --sb-thumb: #d4d4d8;
@@ -35,18 +43,24 @@
         }
 
         [data-theme="dark"] {
-            --ink: #eef0f6;
-            --ink-soft: #d6dbe8;
-            --paper: #0e1322;
-            --paper-2: #11182b;
-            --line: #2a3149;
-            --accent: #c7d2fe;
+            --ink: #efe9dc;
+            --ink-soft: #d3cbb9;
+            --paper: #16130d;
+            --paper-2: #1d190f;
+            --line: #322c1e;
+            --accent: #d6ab5f;
 
-            --sb-thumb: #2c3349;
-            --sb-thumb-hover: #3d465f;
+            --brass: #d6ab5f;
+            --brass-strong: #c99a45;
+            --brass-soft: rgba(214, 171, 95, 0.14);
+            --brass-line: rgba(214, 171, 95, 0.32);
+            --brass-ink: #e6c583;
 
-            --selection-bg: rgba(129, 140, 248, 0.32);
-            --selection-color: #f1f5f9;
+            --sb-thumb: #3a3320;
+            --sb-thumb-hover: #4f4529;
+
+            --selection-bg: rgba(214, 171, 95, 0.28);
+            --selection-color: #faf6ec;
 
             color-scheme: dark;
         }
@@ -59,18 +73,16 @@
         }
         body {
             background:
-              radial-gradient(1200px 600px at 100% -10%, rgba(99,102,241,0.07), transparent 60%),
-              radial-gradient(900px 500px at -10% 110%, rgba(16,185,129,0.05), transparent 60%),
-              linear-gradient(180deg, #fbfbfd 0%, #f4f4f6 100%);
+              radial-gradient(1100px 560px at 100% -12%, rgba(169,123,52,0.06), transparent 62%),
+              linear-gradient(180deg, #faf8f3 0%, #f1ede4 100%);
             background-attachment: fixed;
             min-height: 100vh;
             transition: background-color .25s ease, color .25s ease;
         }
         [data-theme="dark"] body {
             background:
-              radial-gradient(1200px 600px at 100% -10%, rgba(99,102,241,0.12), transparent 60%),
-              radial-gradient(900px 500px at -10% 110%, rgba(16,185,129,0.06), transparent 60%),
-              linear-gradient(180deg, #0d1322 0%, #0a0f1d 100%);
+              radial-gradient(1100px 560px at 100% -12%, rgba(214,171,95,0.10), transparent 62%),
+              linear-gradient(180deg, #16130d 0%, #100d08 100%);
             background-attachment: fixed;
         }
 
@@ -78,7 +90,8 @@
             font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", monospace !important;
             font-feature-settings: "calt" 0;
         }
-        h1, h2, h3 { letter-spacing: -0.015em; }
+        h1, h2 { font-family: var(--display); letter-spacing: -0.02em; }
+        h3 { letter-spacing: -0.012em; }
 
         /* 滚动条：跟随主题 */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -107,19 +120,19 @@
             width: 32px;
             height: 32px;
             border-radius: 10px;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            background: rgba(255, 255, 255, 0.6);
-            color: #475569;
+            border: 1px solid var(--brass-line);
+            background: rgba(255, 253, 249, 0.6);
+            color: var(--brass-ink);
             cursor: pointer;
             transition: all .2s ease;
         }
-        #theme-toggle:hover { background: rgba(241, 245, 249, 0.95); color: #0f172a; }
+        #theme-toggle:hover { background: var(--brass-soft); color: var(--brass-strong); }
         [data-theme="dark"] #theme-toggle {
-            border-color: rgba(148, 163, 184, 0.18);
-            background: rgba(31, 37, 56, 0.65);
-            color: #cbd5e1;
+            border-color: rgba(214, 171, 95, 0.28);
+            background: rgba(42, 36, 22, 0.65);
+            color: var(--brass-ink);
         }
-        [data-theme="dark"] #theme-toggle:hover { background: rgba(45, 52, 76, 0.85); color: #f1f5f9; }
+        [data-theme="dark"] #theme-toggle:hover { background: rgba(58, 51, 32, 0.85); color: #faf6ec; }
         /* 切换图标动画：用 CSS 显示/隐藏，避免 JS 直接改 className */
         #theme-toggle .icon-sun { display: none; }
         #theme-toggle .icon-moon { display: inline-block; }
@@ -340,7 +353,158 @@
 
         /* 触摸设备：表格行选中态需要更明显 */
         @media (hover: none) {
-            tr.cursor-pointer:active { background-color: rgba(99, 102, 241, 0.10); }
+            tr.cursor-pointer:active { background-color: var(--brass-soft); }
+        }
+
+        /* ============================================================
+         * 品牌层 · "控制台 / Control plane"
+         * 把模板化的靛蓝主色系统性替换为克制的黄铜暖色重音；
+         * 语义色(emerald/amber/rose/sky)仅保留用于状态表达。
+         * 全部经 !important 覆写 Tailwind CDN 生成的工具类，不改 markup。
+         * ============================================================ */
+
+        /* —— 主色实心：靛蓝按钮 → 黄铜 —— */
+        .bg-indigo-600, .bg-indigo-500 { background-color: var(--brass) !important; }
+        .bg-indigo-700 { background-color: var(--brass-strong) !important; }
+        .hover\:bg-indigo-700:hover { background-color: var(--brass-strong) !important; }
+        .hover\:bg-indigo-500:hover { background-color: var(--brass) !important; }
+        .bg-indigo-600.shadow-md, .bg-indigo-600.shadow-sm { box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 10px 22px -14px rgba(169,123,52,0.55) !important; }
+        .shadow-indigo-100 { --tw-shadow-color: rgba(169,123,52,0.22) !important; }
+
+        /* —— 强调文本 / 图标：靛蓝 → 黄铜墨 —— */
+        .text-indigo-400, .text-indigo-500, .text-indigo-600 { color: var(--brass) !important; }
+        .text-indigo-700, .text-indigo-800, .text-indigo-900 { color: var(--brass-ink) !important; }
+
+        /* —— 染色浅面 / 边框：靛蓝 → 黄铜 —— */
+        .bg-indigo-50 { background-color: var(--brass-soft) !important; }
+        .bg-indigo-100 { background-color: rgba(169,123,52,0.18) !important; }
+        .hover\:bg-indigo-50:hover { background-color: rgba(169,123,52,0.16) !important; }
+        .hover\:bg-indigo-100:hover { background-color: rgba(169,123,52,0.24) !important; }
+        .border-indigo-100 { border-color: rgba(169,123,52,0.22) !important; }
+        .border-indigo-200 { border-color: var(--brass-line) !important; }
+        .border-indigo-300, .border-indigo-400 { border-color: rgba(169,123,52,0.5) !important; }
+
+        /* —— 焦点环 / 选择控件 —— */
+        .focus\:ring-indigo-500:focus { --tw-ring-color: var(--brass) !important; }
+        .accent-indigo-600 { accent-color: var(--brass) !important; }
+        input:focus, select:focus, textarea:focus { border-color: var(--brass-line) !important; }
+
+        /* —— 冷灰中性 → 暖石墨：让整体从"SaaS 蓝灰"转向"仪器暖灰" —— */
+        .bg-slate-50 { background-color: var(--paper-2) !important; }
+        .bg-slate-100, .bg-slate-100\/80 { background-color: #eae5d9 !important; }
+        .bg-slate-200 { background-color: #ddd6c6 !important; }
+        .border-slate-100 { border-color: #efeadf !important; }
+        .border-slate-200, .border-slate-200\/70, .border-slate-200\/80 { border-color: var(--line) !important; }
+        .border-slate-300 { border-color: #d8d1c1 !important; }
+        .text-slate-400 { color: #9a917f !important; }
+        .text-slate-500 { color: #7c7565 !important; }
+        .text-slate-600 { color: #5f594c !important; }
+        .text-slate-700 { color: #423d31 !important; }
+        .text-slate-800, .text-slate-900 { color: var(--ink) !important; }
+        .hover\:bg-slate-100:hover { background-color: #e3ddce !important; }
+        .hover\:bg-slate-200:hover { background-color: #d6cebc !important; }
+        .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #efeadf !important; }
+
+        /* 白卡在暖底上略微提亮，制造纸感层级 */
+        .bg-white { background-color: #fffdf9 !important; }
+        .bg-white\/85 { background-color: rgba(255,253,249,0.82) !important; }
+        .bg-white\/90 { background-color: rgba(255,253,249,0.9) !important; }
+
+        /* —— 暗色主题：把上面这批映射改为暖石墨 + 亮黄铜 —— */
+        [data-theme="dark"] .bg-indigo-600, [data-theme="dark"] .bg-indigo-500 { background-color: var(--brass) !important; color: #211a0c !important; }
+        [data-theme="dark"] .bg-indigo-700 { background-color: var(--brass-strong) !important; }
+        [data-theme="dark"] .hover\:bg-indigo-700:hover { background-color: var(--brass-strong) !important; }
+        [data-theme="dark"] .hover\:bg-indigo-500:hover { background-color: #e2ba6e !important; }
+        [data-theme="dark"] .text-indigo-400, [data-theme="dark"] .text-indigo-500, [data-theme="dark"] .text-indigo-600 { color: var(--brass) !important; }
+        [data-theme="dark"] .text-indigo-700, [data-theme="dark"] .text-indigo-800, [data-theme="dark"] .text-indigo-900 { color: var(--brass-ink) !important; }
+        [data-theme="dark"] .bg-indigo-50 { background-color: rgba(214,171,95,0.14) !important; }
+        [data-theme="dark"] .bg-indigo-100 { background-color: rgba(214,171,95,0.22) !important; }
+        [data-theme="dark"] .hover\:bg-indigo-50:hover { background-color: rgba(214,171,95,0.18) !important; }
+        [data-theme="dark"] .hover\:bg-indigo-100:hover { background-color: rgba(214,171,95,0.26) !important; }
+        [data-theme="dark"] .border-indigo-100 { border-color: rgba(214,171,95,0.30) !important; }
+        [data-theme="dark"] .border-indigo-200 { border-color: rgba(214,171,95,0.42) !important; }
+        [data-theme="dark"] .border-indigo-300, [data-theme="dark"] .border-indigo-400 { border-color: rgba(214,171,95,0.55) !important; }
+
+        [data-theme="dark"] .bg-white { background-color: #1d190f !important; }
+        [data-theme="dark"] .bg-white\/85 { background-color: rgba(29,25,15,0.82) !important; }
+        [data-theme="dark"] .bg-white\/90 { background-color: rgba(29,25,15,0.9) !important; }
+        [data-theme="dark"] .bg-slate-50 { background-color: #221d12 !important; }
+        [data-theme="dark"] .bg-slate-100, [data-theme="dark"] .bg-slate-100\/80 { background-color: #2a2416 !important; }
+        [data-theme="dark"] .bg-slate-200 { background-color: #322c1c !important; }
+        [data-theme="dark"] .border-slate-100 { border-color: #292315 !important; }
+        [data-theme="dark"] .border-slate-200, [data-theme="dark"] .border-slate-200\/70, [data-theme="dark"] .border-slate-200\/80 { border-color: #322c1e !important; }
+        [data-theme="dark"] .border-slate-300 { border-color: #3d3522 !important; }
+        [data-theme="dark"] .text-slate-400 { color: #8a8168 !important; }
+        [data-theme="dark"] .text-slate-500 { color: #a39a80 !important; }
+        [data-theme="dark"] .text-slate-600 { color: #bcb39a !important; }
+        [data-theme="dark"] .text-slate-700 { color: #cfc7ae !important; }
+        [data-theme="dark"] .text-slate-800 { color: #e3dcc9 !important; }
+        [data-theme="dark"] .text-slate-900 { color: #f3eddd !important; }
+        [data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #292315 !important; }
+        [data-theme="dark"] .hover\:bg-slate-100:hover { background-color: #322c1c !important; }
+        [data-theme="dark"] .hover\:bg-slate-200:hover { background-color: #3d3522 !important; }
+
+        /* —— YAML 输出面板：暗石墨 + 黄铜标题灯，终端里的琥珀荧光 —— */
+        #output-section { background-color: #14110a !important; }
+        #output-yaml-box { background-color: #100d07 !important; color: #d9b877 !important; }
+        [data-theme="dark"] #output-section { background-color: #100d07 !important; }
+        [data-theme="dark"] #output-yaml-box { background-color: #0b0904 !important; color: #dcbd7d !important; }
+
+        /* —— 顶部 Tab 药丸：激活态用黄铜细描边而非硬阴影 —— */
+        .tab-btn.active { box-shadow: inset 0 0 0 1px var(--brass-line), 0 1px 0 rgba(0,0,0,0.03) !important; }
+
+        /* —— 品牌标记：路由节点字形 —— */
+        .brand-mark {
+            position: relative;
+            width: 38px; height: 38px;
+            border-radius: 11px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(150deg, #241d10 0%, #3a2f19 100%);
+            box-shadow: inset 0 0 0 1px rgba(214,171,95,0.28), 0 6px 16px -10px rgba(169,123,52,0.7);
+        }
+        .brand-mark svg { width: 20px; height: 20px; }
+        .brand-dot {
+            position: absolute; top: -3px; right: -3px;
+            width: 9px; height: 9px; border-radius: 999px;
+            background: #6fbf8b;
+            box-shadow: 0 0 0 2px var(--paper), 0 0 8px rgba(111,191,139,0.8);
+        }
+        [data-theme="dark"] .brand-dot { box-shadow: 0 0 0 2px var(--paper), 0 0 8px rgba(111,191,139,0.9); }
+
+        /* —— 命令栏按钮：统一为二级中性描边，主操作留给黄铜 —— */
+        .cmd-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; font-weight: 600;
+            padding: 8px 13px; border-radius: 10px;
+            color: var(--ink-soft);
+            background: var(--paper);
+            border: 1px solid var(--line);
+            transition: border-color .16s ease, background .16s ease, color .16s ease;
+            cursor: pointer;
+        }
+        .cmd-btn:hover { border-color: var(--brass-line); color: var(--ink); background: #fffdf9; }
+        [data-theme="dark"] .cmd-btn { background: #221d12; color: var(--ink-soft); }
+        [data-theme="dark"] .cmd-btn:hover { background: #2a2416; color: var(--ink); }
+        .cmd-btn.cmd-primary {
+            color: #fff; background: var(--brass); border-color: var(--brass-strong);
+            box-shadow: 0 8px 18px -12px rgba(169,123,52,0.75);
+        }
+        .cmd-btn.cmd-primary:hover { background: var(--brass-strong); color: #fff; }
+        [data-theme="dark"] .cmd-btn.cmd-primary { color: #211a0c; }
+        .cmd-btn.cmd-danger { color: #a2412f; border-color: rgba(162,65,47,0.28); background: transparent; margin-left: auto; }
+        .cmd-btn.cmd-danger:hover { color: #8a3526; border-color: rgba(162,65,47,0.5); background: rgba(162,65,47,0.06); }
+        [data-theme="dark"] .cmd-btn.cmd-danger { color: #e0a091; border-color: rgba(224,160,145,0.28); }
+        [data-theme="dark"] .cmd-btn.cmd-danger:hover { color: #f0b8ab; background: rgba(224,160,145,0.1); }
+        .cmd-btn .kbd-hint { font-family: var(--display); font-size: 10px; opacity: 0.55; }
+
+        /* —— 可见键盘焦点：质量地板 —— */
+        button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+            outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 8px;
+        }
+
+        /* —— 减少动效偏好 —— */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
     </style>
     <script>
@@ -364,16 +528,21 @@
     <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-5 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="relative w-9 h-9 rounded-xl flex items-center justify-center" style="background: linear-gradient(135deg, #0b1220 0%, #1f2937 100%);">
-                    <i class="fa-solid fa-shield-halved text-white text-sm"></i>
-                    <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white"></span>
+                <div class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 6.5 H13 A3.5 3.5 0 0 1 13 13.5 H11 A3.5 3.5 0 0 0 11 20.5 H19" stroke="#d6ab5f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="5" cy="6.5" r="2.3" fill="#241d10" stroke="#e6c583" stroke-width="1.5"/>
+                        <circle cx="19" cy="20.5" r="2.3" fill="#241d10" stroke="#e6c583" stroke-width="1.5"/>
+                        <circle cx="16.5" cy="10" r="1.3" fill="#d6ab5f"/>
+                    </svg>
+                    <span class="brand-dot"></span>
                 </div>
                 <div>
                     <h1 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
-                        Calpher 订阅管理
-                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.5</span>
+                        Calpher
+                        <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.7</span>
                     </h1>
-                    <p class="text-[11px] text-slate-500 mt-0.5">多用户 Clash / V2Ray / 小火箭 订阅编排与分发</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">代理节点编排 · 订阅生成与分发</p>
                 </div>
             </div>
 
@@ -412,21 +581,20 @@
             
             <!-- v2rayN 快捷动作栏 -->
             <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap gap-2 items-center shadow-sm">
-                <button onclick="openImportModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-file-import"></i> 导入节点与历史配置 (Import)
+                <button onclick="openImportModal()" class="cmd-btn cmd-primary">
+                    <i class="fa-solid fa-file-import"></i> 导入节点
                 </button>
-                <button onclick="openManualModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3.5 py-2 rounded-lg border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-plus"></i> 手动添加物理服务器
+                <button onclick="openManualModal()" class="cmd-btn">
+                    <i class="fa-solid fa-plus"></i> 添加服务器
                 </button>
-                <button onclick="openGroupModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium px-3.5 py-2 rounded-lg border border-emerald-200 transition-colors flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-tags"></i> 创建逻辑编排分组
+                <button onclick="openGroupModal()" class="cmd-btn">
+                    <i class="fa-solid fa-diagram-project"></i> 新建编排分组
                 </button>
-                <button onclick="openShareExportModal()" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium px-3.5 py-2 rounded-lg border border-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-share-nodes"></i> 导出分享链接 (V2Ray/小火箭)
+                <button onclick="openShareExportModal()" class="cmd-btn">
+                    <i class="fa-solid fa-share-nodes"></i> 导出分享链接
                 </button>
-                <div class="h-4 w-[1px] bg-slate-300 mx-1"></div>
-                <button onclick="triggerClearConfirm()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-medium px-3 py-2 rounded-lg border border-rose-200 transition-colors flex items-center gap-1 cursor-pointer ml-auto">
-                    <i class="fa-solid fa-trash-can"></i> 清空所有数据
+                <button onclick="triggerClearConfirm()" class="cmd-btn cmd-danger">
+                    <i class="fa-solid fa-trash-can"></i> 清空数据
                 </button>
             </div>
 
@@ -437,7 +605,7 @@
                     <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-[600px]">
                         <div class="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center shrink-0">
                             <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <i class="fa-solid fa-server text-indigo-500"></i> 物理代理节点池 (Physical Node Pool)
+                                <i class="fa-solid fa-server text-indigo-500"></i> 物理节点池
                             </h3>
                             <div class="flex items-center gap-2">
                                 <button onclick="openGroupModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded border border-emerald-200 transition-all cursor-pointer">
@@ -484,7 +652,7 @@
                     <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
                         <div class="border-b border-slate-100 pb-2">
                             <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <i class="fa-solid fa-sitemap text-amber-500"></i> 编排拓扑实时预览 (Topology)
+                                <i class="fa-solid fa-sitemap text-amber-500"></i> 编排拓扑
                             </h3>
                             <p class="text-[10px] text-slate-400 mt-0.5">根据分组顺序与中继链条自动绘制</p>
                         </div>
@@ -753,9 +921,16 @@
     <div id="login-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <div class="text-center">
-                <div class="inline-flex bg-indigo-600 text-white p-3 rounded-xl mb-3"><i class="fa-solid fa-shield-halved text-xl"></i></div>
-                <h2 class="text-base font-bold text-slate-800">Calpher 订阅管理</h2>
-                <p class="text-xs text-slate-500 mt-1">请输入分配给你的 UUID 登录</p>
+                <div class="brand-mark mx-auto mb-3" style="width:44px;height:44px;">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:23px;height:23px;">
+                        <path d="M5 6.5 H13 A3.5 3.5 0 0 1 13 13.5 H11 A3.5 3.5 0 0 0 11 20.5 H19" stroke="#d6ab5f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="5" cy="6.5" r="2.3" fill="#241d10" stroke="#e6c583" stroke-width="1.5"/>
+                        <circle cx="19" cy="20.5" r="2.3" fill="#241d10" stroke="#e6c583" stroke-width="1.5"/>
+                        <circle cx="16.5" cy="10" r="1.3" fill="#d6ab5f"/>
+                    </svg>
+                </div>
+                <h2 class="text-base font-bold text-slate-800">Calpher</h2>
+                <p class="text-xs text-slate-500 mt-1">输入分配给你的 UUID 以继续</p>
             </div>
             <input type="text" id="login-uuid-input" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none">
             <div id="login-error" class="hidden text-xs text-rose-600"></div>
@@ -806,7 +981,7 @@
         <div class="bg-white border border-slate-200 rounded-xl w-full max-w-xl p-5 shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-3 shrink-0">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-import text-indigo-600"></i> 数据导入与工作区还原 (Workspace Restoration)
+                    <i class="fa-solid fa-file-import text-indigo-600"></i> 数据导入与还原
                 </h3>
                 <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer text-sm"><i class="fa-solid fa-xmark"></i></button>
             </div>
@@ -868,7 +1043,7 @@
 
             <form id="manual-node-form" class="space-y-3" onsubmit="event.preventDefault(); submitManualNode();">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">协议类型 (Protocol)</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">协议类型</label>
                     <select id="man-type" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" onchange="toggleManualFormFields()">
                         <option value="socks">SOCKS5 / 住宅代理</option>
                         <option value="vmess">VMess</option>
@@ -1155,7 +1330,7 @@
 
                 <!-- 手动录入时选择目标组(编辑模式下会被隐藏) -->
                 <div id="man-target-group-wrapper">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">指定归属编排组 (Target Group)</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">指定归属编排组</label>
                     <select id="man-target-group" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
                         <!-- 动态载入 -->
                     </select>
@@ -1189,10 +1364,10 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">2. 分组类型</label>
                         <select id="new-group-role" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" onchange="toggleGroupRoleFields()">
-                            <option value="entry">🛫 前置入口组 (Entry Pool)</option>
-                            <option value="common">📦 普通业务组 (Common Group)</option>
-                            <option value="exit">🛬 落地出口组 (Exit Pool)</option>
-                            <option value="relay">🔗 静态固定链路 (Static Chain)</option>
+                            <option value="entry">🛫 前置入口组</option>
+                            <option value="common">📦 普通业务组</option>
+                            <option value="exit">🛬 落地出口组</option>
+                            <option value="relay">🔗 静态固定链路</option>
                         </select>
                     </div>
                 </div>
@@ -1200,7 +1375,7 @@
                 <!-- 场景 1: 静态链路组专属设置 (拼积木模式) -->
                 <div id="relay-group-settings" class="hidden bg-indigo-50 border border-indigo-100 p-3 rounded-lg space-y-3">
                     <label class="block text-xs font-bold text-indigo-800 flex items-center gap-1">
-                        <i class="fa-solid fa-link"></i> 3. 静态链式装配 (Static Chaining)
+                        <i class="fa-solid fa-link"></i> 3. 静态链式装配
                     </label>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -1272,7 +1447,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">导出范围 (Scope)</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">导出范围</label>
                     <select id="share-export-scope" onchange="renderShareExportLinks()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
                         <option value="all">全部物理节点</option>
                         <!-- 动态注入各分组 -->
