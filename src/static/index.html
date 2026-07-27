@@ -654,6 +654,22 @@
         }
         .row-flash { animation: row-flash-kf 1.1s ease; box-shadow: inset 3px 0 0 var(--brass); }
 
+        /* —— 拿起→放下 移动模式 —— */
+        #carry-bar {
+            background: linear-gradient(135deg, var(--brass-strong), var(--brass));
+            color: #fff; border: 1px solid rgba(255,255,255,0.15);
+        }
+        [data-theme="dark"] #carry-bar { color: #211a0c; }
+        #carry-bar strong { font-weight: 700; }
+        /* 被拿起的行：半透明 + 虚框，表示"已提起" */
+        tr.carry-source { opacity: .45; box-shadow: inset 0 0 0 1px var(--brass-line); }
+        /* 移动模式下，其它行作为可落点：hover 出现"放到这上方"的上边线 */
+        tr.carry-target:hover { background: var(--brass-soft) !important; box-shadow: inset 0 3px 0 -1px var(--brass); }
+        tr.carry-target:hover td:first-child::before {
+            content: "\f0d8"; font-family: "Font Awesome 6 Free"; font-weight: 900;
+            color: var(--brass); margin-right: 2px;
+        }
+
         /* —— 减少动效偏好 —— */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
@@ -1697,6 +1713,16 @@
         <span id="toast-msg">提示消息</span>
     </div>
 
+    <!-- 移动模式浮条：拿起某节点后显示，提示去点目标位置 -->
+    <div id="carry-bar" class="hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-[60] items-center gap-3 px-4 py-2.5 rounded-full shadow-2xl text-xs">
+        <span class="flex items-center gap-2">
+            <i class="fa-solid fa-hand-pointer"></i>
+            正在移动 <strong id="carry-name" class="max-w-[180px] truncate"></strong>
+            <span class="opacity-70">— 点目标节点，放到它上方</span>
+        </span>
+        <button onclick="cancelCarry()" class="ml-1 px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 transition-colors">取消 (Esc)</button>
+    </div>
+
     <!-- 节点行右键菜单(v2rayN 风格) -->
     <div id="node-context-menu" class="fixed hidden z-[100] bg-white border border-slate-200 rounded-lg shadow-2xl py-1 text-xs min-w-[180px]" oncontextmenu="event.preventDefault()">
         <button onclick="ctxMenuAction('edit')" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 cursor-pointer">
@@ -1710,6 +1736,9 @@
         </button>
         <div class="border-t border-slate-100 my-1"></div>
         <div class="px-3 py-0.5 text-[9px] uppercase tracking-wider text-slate-400">调整排序</div>
+        <button onclick="ctxMenuAction('pickup')" class="block w-full text-left px-3 py-1.5 hover:bg-amber-50 text-amber-700 cursor-pointer font-semibold">
+            <i class="fa-solid fa-hand text-amber-500 w-4 mr-1"></i> 拿起，移到某处… <span class="float-right text-amber-300 text-[10px]">找到目标点它</span>
+        </button>
         <button onclick="ctxMenuAction('move-top')" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 cursor-pointer">
             <i class="fa-solid fa-angles-up text-slate-400 w-4 mr-1"></i> 移到顶部
         </button>
@@ -2133,8 +2162,14 @@
                 tr.dataset.nodeId = node.id;
                 tr.dataset.idx = idx;
                 // 仅拖拽手柄可发起拖动，避免整行可拖与"单击选中"冲突误触
-                tr.className = "cursor-pointer transition-colors select-none " + (isSelected ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50");
-                tr.title = '单击=选中  双击=编辑  右键=菜单  Ctrl+C=复制分享链接  Delete=删除  拖手柄=调整排序';
+                const isCarried = carryNodeId === node.id;
+                const carryingOthers = carryNodeId && !isCarried;
+                tr.className = "cursor-pointer transition-colors select-none "
+                    + (isCarried ? "carry-source " : "")
+                    + (carryingOthers ? "carry-target " : "")
+                    + (isSelected ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50");
+                tr.title = carryingOthers ? '点这里：把拿起的节点放到本行上方'
+                    : '单击=选中  双击=编辑  右键=菜单  Ctrl+C=复制分享链接  Delete=删除  拖手柄=调整排序';
                 tr.innerHTML = `
                     <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400"><i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab" draggable="true" title="拖动调整排序"></i></td>
                     <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400"><span class="seq-num" data-node-id="${node.id}" data-pos="${idx + 1}" title="点击输入目标序号，回车即可移动到该位置">${idx + 1}</span></td>
@@ -2199,6 +2234,12 @@
         }
 
         function onNodeRowClick(e, nodeId, idx) {
+            // 移动模式：点任意行 = 把手里的节点放到该行上方
+            if (carryNodeId) {
+                e.preventDefault();
+                dropCarriedBefore(nodeId);
+                return;
+            }
             const filtered = getFilteredNodesForActiveTab();
             if (e.shiftKey && lastSelectedNodeIdx >= 0) {
                 // 范围选择
@@ -2255,9 +2296,49 @@
                 duplicateNodes(ids);
             } else if (act === 'delete') {
                 triggerDeleteNodes(ids);
+            } else if (act === 'pickup') {
+                pickUpNode(ctxMenuTargetId || ids[0]);
             } else if (act.startsWith('move-')) {
                 moveNodeInView(ctxMenuTargetId || ids[0], act.replace('move-', ''));
             }
+        }
+
+        // ================= 拿起 → 放下 移动模型 =================
+        // 拿起某节点后，用户自由滚动找到目标位置，点目标行即把它放到该行上方。
+        // 全程不用记数字、不用来回切。
+        let carryNodeId = null;
+        function pickUpNode(nodeId) {
+            if (!nodeId) return;
+            carryNodeId = nodeId;
+            const node = nodes.find(n => n.id === nodeId);
+            const bar = document.getElementById('carry-bar');
+            document.getElementById('carry-name').textContent = node ? (node.name || node.id) : '';
+            bar.classList.remove('hidden');
+            bar.classList.add('flex');
+            renderNodesTable();
+            showToast('已拿起，去点目标位置的节点即可放下');
+        }
+        function cancelCarry() {
+            if (!carryNodeId) return;
+            carryNodeId = null;
+            const bar = document.getElementById('carry-bar');
+            bar.classList.add('hidden');
+            bar.classList.remove('flex');
+            renderNodesTable();
+        }
+        // 把手里的节点放到目标节点的上方（放到它前面）
+        function dropCarriedBefore(targetNodeId) {
+            const src = carryNodeId;
+            if (!src || targetNodeId === src) { cancelCarry(); return; }
+            reorderNodes(src, targetNodeId, true);
+            const dropped = src;
+            carryNodeId = null;
+            const bar = document.getElementById('carry-bar');
+            bar.classList.add('hidden'); bar.classList.remove('flex');
+            renderNodesTable();
+            renderTopology();
+            highlightNodeRow(dropped);
+            showToast('已放到目标位置');
         }
 
         // 在当前可见列表内移动一个节点：top / bottom / up / down
@@ -5730,6 +5811,12 @@
             return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
         }
         document.addEventListener('keydown', function(e) {
+            // 移动模式下 Esc 先取消"拿起"
+            if (carryNodeId && e.key === 'Escape') {
+                cancelCarry();
+                e.preventDefault();
+                return;
+            }
             // 点击右键菜单时,Esc 先关菜单
             const menu = document.getElementById('node-context-menu');
             if (menu && !menu.classList.contains('hidden') && e.key === 'Escape') {
