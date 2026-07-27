@@ -1688,6 +1688,20 @@
             <i class="fa-solid fa-clone text-sky-500 w-4 mr-1"></i> 复制副本(新增)
         </button>
         <div class="border-t border-slate-100 my-1"></div>
+        <div class="px-3 py-0.5 text-[9px] uppercase tracking-wider text-slate-400">调整排序</div>
+        <button onclick="ctxMenuAction('move-top')" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 cursor-pointer">
+            <i class="fa-solid fa-angles-up text-slate-400 w-4 mr-1"></i> 移到顶部
+        </button>
+        <button onclick="ctxMenuAction('move-up')" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 cursor-pointer">
+            <i class="fa-solid fa-angle-up text-slate-400 w-4 mr-1"></i> 上移一格
+        </button>
+        <button onclick="ctxMenuAction('move-down')" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 cursor-pointer">
+            <i class="fa-solid fa-angle-down text-slate-400 w-4 mr-1"></i> 下移一格
+        </button>
+        <button onclick="ctxMenuAction('move-bottom')" class="block w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 cursor-pointer">
+            <i class="fa-solid fa-angles-down text-slate-400 w-4 mr-1"></i> 移到底部
+        </button>
+        <div class="border-t border-slate-100 my-1"></div>
         <button onclick="ctxMenuAction('delete')" class="block w-full text-left px-3 py-1.5 hover:bg-rose-50 text-rose-600 cursor-pointer">
             <i class="fa-regular fa-trash-can w-4 mr-1"></i> 删除节点 <span class="float-right text-rose-300 text-[10px]">Delete</span>
         </button>
@@ -1753,7 +1767,33 @@
         let nodes = [];
         let groups = [];
         let compiledYaml = "";
-        let editingGroupId = null; 
+        let editingGroupId = null;
+
+        // ================= 未分组暂存区 (方案A) =================
+        // g-default 不是普通业务组，而是"还没编排的节点"的暂存池：
+        //   · 不参与拓扑绘制 / YAML 编译 / 订阅生成
+        //   · 节点一旦被编入任何真实分组，自动从暂存区移出
+        //   · 分组 Tab 上显示为灰色「未分组」特殊标签
+        const STASH_GROUP_ID = 'g-default';
+        function isStashGroup(g) { return g && (g.id === STASH_GROUP_ID || g.name === '默认分组'); }
+        // 参与编排输出的真实分组（排除暂存区）
+        function orchestratedGroups() { return groups.filter(g => !isStashGroup(g)); }
+        // 把已被真实分组收纳的节点，从暂存区移除；暂存区空了就删掉它
+        function sweepStashGroup() {
+            const stash = groups.find(isStashGroup);
+            if (!stash) return;
+            const realMemberIds = new Set();
+            groups.forEach(g => {
+                if (isStashGroup(g)) return;
+                (g.nodes || []).forEach(id => realMemberIds.add(id));
+            });
+            stash.nodes = (stash.nodes || []).filter(id => !realMemberIds.has(id));
+            if (stash.nodes.length === 0) {
+                groups = groups.filter(g => !isStashGroup(g));
+                // 若当前正停在已消失的暂存 Tab 上，回到全部视图
+                if (activeGroupTab === STASH_GROUP_ID) activeGroupTab = 'all';
+            }
+        }
 
         // 系统总线命名配置
         let entryBusName = "🛠️ 级联入口总线 (ENTRY)";
@@ -1967,11 +2007,12 @@
             tabsBar.appendChild(allTab);
 
             groups.forEach((g, idx) => {
+                if (isStashGroup(g)) return; // 暂存区单独渲染在最后
                 const tab = document.createElement('div');
                 tab.className = "flex items-center gap-0.5 group shrink-0";
-                
+
                 let icon = g.role === 'entry' ? '🛫' : (g.role === 'exit' ? '🛬' : (g.role === 'relay' ? '🔗' : '📦'));
-                
+
                 const btn = document.createElement('button');
                 btn.onclick = () => setGroupTab(g.id);
                 btn.className = `px-3 py-1.5 text-[10px] font-bold rounded-l transition-all cursor-pointer whitespace-nowrap ${activeGroupTab === g.id ? 'bg-white text-indigo-600 shadow-sm border border-slate-200 border-r-0' : 'text-slate-500 hover:text-slate-900'}`;
@@ -2007,6 +2048,18 @@
                 tab.appendChild(actionContainer);
                 tabsBar.appendChild(tab);
             });
+
+            // 未分组暂存区：灰色特殊 Tab，无编辑/排序（不是真实分组）
+            const stash = groups.find(isStashGroup);
+            if (stash && (stash.nodes || []).length > 0) {
+                const stashBtn = document.createElement('button');
+                stashBtn.onclick = () => setGroupTab(stash.id);
+                const active = activeGroupTab === stash.id;
+                stashBtn.className = `flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer whitespace-nowrap shrink-0 border border-dashed ${active ? 'bg-white text-slate-600 border-slate-300 shadow-sm' : 'text-slate-400 border-slate-200 hover:text-slate-600'}`;
+                stashBtn.title = '还没编入任何分组的节点。编入分组后会自动从这里移出；若保存时仍未编排，将被清理。';
+                stashBtn.innerHTML = `<i class="fa-regular fa-clock"></i> 未分组 (${stash.nodes.length})`;
+                tabsBar.appendChild(stashBtn);
+            }
 
             // 2. 过滤并渲染节点
             let filteredNodes = [];
@@ -2058,11 +2111,11 @@
                 const tr = document.createElement('tr');
                 tr.dataset.nodeId = node.id;
                 tr.dataset.idx = idx;
-                tr.draggable = true;
+                // 仅拖拽手柄可发起拖动，避免整行可拖与"单击选中"冲突误触
                 tr.className = "cursor-pointer transition-colors select-none " + (isSelected ? "bg-indigo-50 hover:bg-indigo-100" : "hover:bg-slate-50");
-                tr.title = '单击=选中  双击=编辑  右键=菜单  Ctrl+C=复制分享链接  Delete=删除  拖拽=调整排序';
+                tr.title = '单击=选中  双击=编辑  右键=菜单  Ctrl+C=复制分享链接  Delete=删除  拖手柄=调整排序';
                 tr.innerHTML = `
-                    <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400"><i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab"></i></td>
+                    <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400"><i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab" draggable="true" title="拖动调整排序"></i></td>
                     <td class="px-4 py-2.5 text-center font-mono font-bold text-slate-400">${idx + 1}</td>
                     <td class="px-4 py-2.5 font-semibold">
                         <span class="px-2 py-0.5 rounded text-[10px] font-mono ${badgeClass}">${node.type.toUpperCase()}</span>
@@ -2178,7 +2231,35 @@
                 duplicateNodes(ids);
             } else if (act === 'delete') {
                 triggerDeleteNodes(ids);
+            } else if (act.startsWith('move-')) {
+                moveNodeInView(ctxMenuTargetId || ids[0], act.replace('move-', ''));
             }
+        }
+
+        // 在当前可见列表内移动一个节点：top / bottom / up / down
+        function moveNodeInView(nodeId, where) {
+            if (!nodeId) return;
+            const view = getFilteredNodesForActiveTab();
+            const pos = view.findIndex(n => n.id === nodeId);
+            if (pos === -1) return;
+            if (where === 'up' && pos === 0) return;
+            if (where === 'down' && pos === view.length - 1) return;
+            if (where === 'top' && pos === 0) return;
+            if (where === 'bottom' && pos === view.length - 1) return;
+
+            if (where === 'top') {
+                reorderNodes(nodeId, view[0].id, true);
+            } else if (where === 'bottom') {
+                reorderNodes(nodeId, view[view.length - 1].id, false);
+            } else if (where === 'up') {
+                // 移到上一个的前面
+                reorderNodes(nodeId, view[pos - 1].id, true);
+            } else if (where === 'down') {
+                // 移到下一个的后面
+                reorderNodes(nodeId, view[pos + 1].id, false);
+            }
+            renderNodesTable();
+            renderTopology();
         }
 
         function copyNodeShareLinks(ids) {
@@ -2244,6 +2325,26 @@
 
         // ================= 节点拖拽排序 =================
         let dragSrcNodeId = null;
+        // 拖拽到容器上下边缘时的自动滚动（解决"从底部往顶部拖"的痛点）
+        let dragScrollRAF = null;
+        let dragScrollSpeed = 0;
+        function getNodeScrollContainer(tableBody) {
+            // 表格所在的 overflow-auto 滚动容器
+            return tableBody.closest('.overflow-auto') || tableBody.parentElement;
+        }
+        function runDragAutoScroll(container) {
+            if (dragScrollRAF) return;
+            const step = () => {
+                if (dragScrollSpeed === 0) { dragScrollRAF = null; return; }
+                container.scrollTop += dragScrollSpeed;
+                dragScrollRAF = requestAnimationFrame(step);
+            };
+            dragScrollRAF = requestAnimationFrame(step);
+        }
+        function stopDragAutoScroll() {
+            dragScrollSpeed = 0;
+            if (dragScrollRAF) { cancelAnimationFrame(dragScrollRAF); dragScrollRAF = null; }
+        }
 
         function setupTableDragDrop() {
             const tableBody = document.getElementById('node-table-body');
@@ -2254,17 +2355,22 @@
             tableBody.dataset.dragBound = '1';
 
             tableBody.addEventListener('dragstart', (e) => {
+                // 只允许从拖拽手柄发起
+                if (!e.target.closest('.drag-handle')) { e.preventDefault(); return; }
                 const tr = e.target.closest('tr');
                 if (!tr) return;
                 dragSrcNodeId = tr.dataset.nodeId;
                 tr.classList.add('opacity-50');
                 e.dataTransfer.effectAllowed = 'move';
+                // 拖整行作为拖影，而不是那个小图标
+                try { e.dataTransfer.setDragImage(tr, 20, 16); } catch (_) {}
             });
 
             tableBody.addEventListener('dragend', (e) => {
                 const tr = e.target.closest('tr');
                 if (tr) tr.classList.remove('opacity-50', 'bg-indigo-100');
                 dragSrcNodeId = null;
+                stopDragAutoScroll();
                 // 移除所有 drop indicator
                 tableBody.querySelectorAll('tr').forEach(r => r.classList.remove('border-t-2', 'border-indigo-400'));
             });
@@ -2272,6 +2378,25 @@
             tableBody.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
+
+                // —— 边缘自动滚动 —— 鼠标进入容器上/下 ~64px 缓冲区时按距离比例滚动
+                const container = getNodeScrollContainer(tableBody);
+                if (container) {
+                    const rect = container.getBoundingClientRect();
+                    const edge = 64, maxSpeed = 18;
+                    const distTop = e.clientY - rect.top;
+                    const distBottom = rect.bottom - e.clientY;
+                    if (distTop < edge && distTop >= 0) {
+                        dragScrollSpeed = -Math.ceil(maxSpeed * (1 - distTop / edge));
+                        runDragAutoScroll(container);
+                    } else if (distBottom < edge && distBottom >= 0) {
+                        dragScrollSpeed = Math.ceil(maxSpeed * (1 - distBottom / edge));
+                        runDragAutoScroll(container);
+                    } else {
+                        stopDragAutoScroll();
+                    }
+                }
+
                 const tr = e.target.closest('tr');
                 if (!tr || tr.dataset.nodeId === dragSrcNodeId) return;
 
@@ -2287,6 +2412,7 @@
 
             tableBody.addEventListener('drop', (e) => {
                 e.preventDefault();
+                stopDragAutoScroll();
                 const tr = e.target.closest('tr');
                 if (!tr || !dragSrcNodeId) return;
                 const targetNodeId = tr.dataset.nodeId;
@@ -4323,6 +4449,7 @@
                 });
                 showToast(`逻辑编排组「${name}」已创建并保存`);
             }
+            sweepStashGroup(); // 被编入真实分组的节点自动移出未分组暂存区
             closeGroupModal();
             renderGroupsBoard();
             renderNodesTable();
@@ -4336,12 +4463,17 @@
             if (!container) return;
             container.innerHTML = '';
 
-            if (groups.length === 0) {
-                container.innerHTML = `<div class="text-slate-400 italic">等待创建分组...</div>`;
+            const topoGroups = orchestratedGroups();
+            if (topoGroups.length === 0) {
+                const stash = groups.find(isStashGroup);
+                const stashCnt = stash ? (stash.nodes || []).length : 0;
+                container.innerHTML = stashCnt > 0
+                    ? `<div class="text-slate-400 italic leading-relaxed">有 ${stashCnt} 个节点还在「未分组」暂存区。<br>点上方「新建编排分组」把它们编入分组，链路拓扑会自动画在这里。</div>`
+                    : `<div class="text-slate-400 italic">等待创建分组...</div>`;
                 return;
             }
 
-            groups.forEach(g => {
+            topoGroups.forEach(g => {
                 const div = document.createElement('div');
                 div.className = "flex flex-col gap-1 p-2 bg-white border border-slate-100 rounded shadow-sm mb-2";
 
@@ -4558,6 +4690,9 @@
                 showCustomAlert("编译失败", "物理代理服务器负载池目前为空，请先在左侧点击“导入节点”！");
                 return;
             }
+
+            // 方案A: 编译时排除「未分组」暂存区 —— 后续所有 groups 引用均只见真实分组
+            const groups = orchestratedGroups();
 
             // 1. 生成唯一的物理代理名称映射(对外可见的 clash proxy name)
             const uniqueNamesMap = {};

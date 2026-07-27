@@ -164,7 +164,9 @@ export function nodeToShareLink(n) {
 // returns: { all: [...], groups: [{ id, name, lines: [...] }] }
 export function buildShareLinks(workspace) {
     const nodes = Array.isArray(workspace && workspace.nodes) ? workspace.nodes : [];
-    const groups = Array.isArray(workspace && workspace.groups) ? workspace.groups : [];
+    const allGroups = Array.isArray(workspace && workspace.groups) ? workspace.groups : [];
+    // 未分组暂存区(g-default / 默认分组)不生成分组订阅
+    const groups = allGroups.filter(g => !(g && (g.id === 'g-default' || g.name === '默认分组')));
 
     // 跳过 ⛓️ 前缀的虚拟链路衍生节点(它们只用于 clash 编排,不直接分享)
     const physicalNodes = nodes.filter(n => !(n && typeof n.name === 'string' && n.name.startsWith('⛓️')));
