@@ -287,8 +287,8 @@
             /* 工具栏按钮：自适应换行已存在，仅紧凑文字 */
             main .bg-white.rounded-xl.p-3.flex.flex-wrap button { font-size: 11px; padding-left: 10px; padding-right: 10px; padding-top: 7px; padding-bottom: 7px; }
 
-            /* 主表格卡片：固定高度调整为流式 */
-            .h-\[600px\] { height: auto !important; min-height: 420px; max-height: 70vh; }
+            /* 主表格卡片：移动端固定高度调整为流式 */
+            .workspace-panel { height: auto !important; min-height: 380px; max-height: 68vh; }
 
             /* 拓扑预览：右栏在窄屏会上下排，提供合理 min-height */
             #topology-container { min-height: 160px; max-height: 320px; }
@@ -613,6 +613,26 @@
         .advanced-naming-panel:not([hidden]) { animation: adv-in .22s ease; }
         @keyframes adv-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* —— 工作区面板：随视口自适应，让编排页收进一屏 ——
+         * 视口高 − (顶栏 ~64 + 步骤条 ~72 + 操作条 ~72 + 间距 ~52) ≈ 260px */
+        .workspace-panel { height: clamp(360px, calc(100vh - 264px), 760px); }
+        @media (max-width: 1279px) {
+            /* 未进入双列前(xl 以下)高度收敛，避免单列时过高 */
+            .workspace-panel { height: clamp(340px, 56vh, 620px); }
+        }
+
+        /* —— 我的订阅：YAML 查看器折叠头 —— */
+        .yaml-toggle {
+            width: 100%; display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 12px; border-radius: 10px;
+            background: var(--paper-2); border: 1px solid var(--line);
+            cursor: pointer; font-size: 12px; transition: border-color .16s ease, background .16s ease;
+        }
+        .yaml-toggle:hover { border-color: var(--brass-line); }
+        .yaml-toggle-caret { font-size: 10px; transition: transform .2s ease; }
+        .yaml-toggle[aria-expanded="true"] .yaml-toggle-caret { transform: rotate(180deg); }
+        .yaml-toggle[aria-expanded="true"] { border-color: var(--brass-line); background: var(--brass-soft); }
+
         /* —— 减少动效偏好 —— */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
@@ -721,7 +741,7 @@
 
                 <!-- ① 物理节点池 (7/12) -->
                 <div id="stage-nodes" class="xl:col-span-7 scroll-mt-20">
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-[600px]">
+                    <div class="workspace-panel bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
                         <div class="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex justify-between items-center gap-2 shrink-0 flex-wrap">
                             <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <span class="panel-step">1</span> 物理节点池
@@ -771,7 +791,7 @@
 
                 <!-- ② 编排拓扑 (5/12) -->
                 <div id="stage-topology" class="xl:col-span-5 scroll-mt-20">
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-[600px]">
+                    <div class="workspace-panel bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
                         <div class="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex justify-between items-center gap-2 shrink-0 flex-wrap">
                             <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <span class="panel-step">2</span> 编排拓扑
@@ -811,7 +831,7 @@
 
                     <div class="dock-spacer"></div>
 
-                    <button onclick="compileConfig()" class="cmd-btn dock-secondary">
+                    <button onclick="previewCompile()" class="cmd-btn dock-secondary">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> 编译预览
                     </button>
                     <button onclick="saveToCloud()" class="dock-hero">
@@ -840,25 +860,6 @@
                         </div>
                     </div>
                 </div>
-
-            <!-- 输出展示区 -->
-            <div id="output-section" class="bg-slate-900 rounded-xl overflow-hidden shadow-xl hidden flex flex-col">
-                <div class="bg-slate-800 px-4 py-2.5 flex justify-between items-center text-xs">
-                    <div class="flex items-center gap-1.5 font-mono text-indigo-400">
-                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                        <span>compiled_clash_config.yaml</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="downloadYaml()" class="bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-medium px-2.5 py-1 rounded transition-colors cursor-pointer">
-                            <i class="fa-solid fa-download mr-1"></i> 下载配置
-                        </button>
-                        <button onclick="copyCompiledConfig()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium px-2.5 py-1 rounded transition-colors cursor-pointer">
-                            <i class="fa-solid fa-copy mr-1"></i> 复制到剪贴板
-                        </button>
-                    </div>
-                </div>
-                <pre id="output-yaml-box" class="p-4 text-[11px] font-mono text-emerald-400 bg-slate-950 overflow-auto max-h-[400px] leading-relaxed"></pre>
-            </div>
             </div><!-- /stage-output -->
 
         </div>
@@ -914,6 +915,36 @@
                             <!-- 动态生成: 每组一行 -->
                         </div>
                     </div>
+
+                    <!-- 编译后的 Clash 配置文件：折叠查看 / 下载 / 复制 -->
+                    <div>
+                        <button type="button" onclick="toggleYamlViewer()" class="yaml-toggle" id="yaml-toggle-btn" aria-expanded="false" aria-controls="output-section">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-code text-indigo-600"></i>
+                                <span class="font-semibold text-slate-600">Clash 配置文件 (YAML)</span>
+                                <span class="text-[10px] text-slate-400">离线备用 · 可直接导入</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-down yaml-toggle-caret text-slate-400"></i>
+                        </button>
+                        <div id="output-section" class="mt-2 bg-slate-900 rounded-xl overflow-hidden shadow-lg hidden flex flex-col">
+                            <div class="bg-slate-800 px-4 py-2.5 flex justify-between items-center text-xs">
+                                <div class="flex items-center gap-1.5 font-mono text-indigo-400">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                    <span>clash_config.yaml</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="downloadYaml()" class="bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-medium px-2.5 py-1 rounded transition-colors cursor-pointer">
+                                        <i class="fa-solid fa-download mr-1"></i> 下载文件
+                                    </button>
+                                    <button onclick="copyCompiledConfig()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium px-2.5 py-1 rounded transition-colors cursor-pointer">
+                                        <i class="fa-solid fa-copy mr-1"></i> 复制全文
+                                    </button>
+                                </div>
+                            </div>
+                            <pre id="output-yaml-box" class="p-4 text-[11px] font-mono text-emerald-400 bg-slate-950 overflow-auto max-h-[360px] leading-relaxed"></pre>
+                        </div>
+                    </div>
+
                     <div class="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
                         <p><i class="fa-solid fa-circle-info text-slate-400 mr-1"></i> 订阅 token 由系统生成,与登录 UUID 分离,可在保存时点"重置 token"使旧链接失效。</p>
                         <p>外部 API: <code class="bg-white px-1 rounded border border-slate-200">GET /api/v1/config</code>,Header 带 <code class="bg-white px-1 rounded border border-slate-200">Authorization: Bearer &lt;你的登录UUID&gt;</code></p>
@@ -1771,7 +1802,7 @@
             try {
                 const hasNodes = Array.isArray(nodes) && nodes.length > 0;
                 const hasGroups = Array.isArray(groups) && groups.length > 0;
-                const hasSub = !document.getElementById('output-section').classList.contains('hidden');
+                const hasSub = !!(typeof lastSubInfo !== 'undefined' && lastSubInfo);
                 setStageDone('stage-1', hasNodes, hasNodes ? (nodes.length + ' 个节点已就绪') : '导入或手动添加物理服务器');
                 setStageDone('stage-2', hasGroups, hasGroups ? (groups.length + ' 个编排分组') : '把节点分组、串成中继链');
                 setStageDone('stage-3', hasSub, hasSub ? '订阅已生成，可在「我的订阅」查看' : '编译并保存，得到订阅链接');
@@ -4811,10 +4842,34 @@
 
             compiledYaml = yaml;
             document.getElementById('output-yaml-box').innerText = yaml;
-            document.getElementById('output-section').classList.remove('hidden');
             refreshStageRail();
             console.info("[compile] done, yaml length=", yaml.length);
-            showToast("Clash YAML 编译完毕 (极简版)！");
+        }
+
+        // 「编译预览」：编译后跳到「我的订阅」并展开 YAML 查看器，让用户挑订阅方式
+        function previewCompile() {
+            try {
+                compileConfig();
+            } catch (e) {
+                showCustomAlert('编译失败', e.message);
+                return;
+            }
+            if (!compiledYaml) { showToast('暂无可编译的配置'); return; }
+            switchTab('cloud-workspace');
+            const sec = document.getElementById('output-section');
+            const btn = document.getElementById('yaml-toggle-btn');
+            if (sec && sec.classList.contains('hidden')) toggleYamlViewer();
+            showToast('已编译，可在「我的订阅」查看配置文件');
+        }
+
+        // YAML 查看器折叠
+        function toggleYamlViewer() {
+            const sec = document.getElementById('output-section');
+            const btn = document.getElementById('yaml-toggle-btn');
+            if (!sec) return;
+            const willShow = sec.classList.contains('hidden');
+            sec.classList.toggle('hidden', !willShow);
+            if (btn) btn.setAttribute('aria-expanded', String(willShow));
         }
 
         // ================= 辅助导出/操作 =================
@@ -5191,7 +5246,13 @@
                 });
                 lastSubInfo = data.subscription || null;
                 renderSubscriptionPanel();
-                showToast(lastSubInfo ? '配置已保存,订阅已生成' : '配置已保存(节点为空,未生成订阅)');
+                refreshStageRail();
+                if (lastSubInfo) {
+                    switchTab('cloud-workspace');
+                    showToast('订阅已生成，请在这里选择订阅方式');
+                } else {
+                    showToast('配置已保存(节点为空,未生成订阅)');
+                }
             } catch (e) {
                 showCustomAlert('保存失败', e.message);
             }
