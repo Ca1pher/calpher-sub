@@ -4939,7 +4939,7 @@
         //   - 顶部主控组(可被同名识别) 只列出用户分组,带 # meta-master: true,
         //     便于往返导入时自动跳过,而不会污染用户的编排空间。
         function compileConfig() {
-            console.info("[compile] start, nodes=", nodes.length, "groups=", groups.length);
+            console.info("[compile] start, nodes=", nodes.length);
             if (nodes.length === 0) {
                 showCustomAlert("编译失败", "物理代理服务器负载池目前为空，请先在左侧点击“导入节点”！");
                 return;
@@ -4947,6 +4947,7 @@
 
             // 方案A: 编译时排除「未分组」暂存区 —— 后续所有 groups 引用均只见真实分组
             const groups = orchestratedGroups();
+            console.info("[compile] orchestrated groups=", groups.length);
 
             // 1. 生成唯一的物理代理名称映射(对外可见的 clash proxy name)
             const uniqueNamesMap = {};
@@ -5080,11 +5081,12 @@
             //   ❌ 不列 exit 直连版 (exit 走链才通,通过 MATRIX 触达)
             //   ❌ 不列 ENTRY/EXIT 总线 (它们是动态链式的设置组)
             //   ❌ 不列物理节点直挂 (避免主控过乱)
-            // 仅当存在 entry/exit/relay 分组时才输出主控(纯普通分组时各单组可直接选)
+            // 仅当存在 entry/exit/relay 分组,或存在普通分组(供用户在面板切换默认走哪个组)时才输出主控
             const exitGroupsArr = groups.filter(g => g.role === 'exit');
             const entryGroups = groups.filter(g => g.role === 'entry');
             const hasSpecialGroups = groups.some(g => g.role !== 'common');
-            if (hasSpecialGroups) {
+            const commonGroups = groups.filter(g => g.role === 'common');
+            if (hasSpecialGroups || commonGroups.length > 0) {
                 yaml += `  # meta-system: master\n`;
                 yaml += `  - name: "${MASTER_NAME}"\n    type: select\n    proxies:\n`;
                 if (exitGroupsArr.length > 0) {
@@ -5216,15 +5218,10 @@
             yaml += `  - GEOSITE,cn,DIRECT\n`;
             yaml += `  - GEOIP,cn,DIRECT\n`;
 
-            // MATCH rule: route to common groups if they exist, otherwise master or DIRECT
-            const commonGroups = groups.filter(g => g.role === 'common');
-            if (hasSpecialGroups) {
+            // MATCH rule: 有主控组就路由到主控(含所有普通分组 + DIRECT,可在面板切换默认走哪个组),
+            // 否则 DIRECT。不能加引号: mihomo 会把 MATCH,"YX" 的引号当成代理名的一部分。
+            if (hasSpecialGroups || commonGroups.length > 0) {
                 yaml += `  - MATCH,${MASTER_NAME}\n`;
-            } else if (commonGroups.length === 1) {
-                yaml += `  - MATCH,"${groupClashNameMap[commonGroups[0].id]}"\n`;
-            } else if (commonGroups.length > 1) {
-                // Multiple common groups: use first one as MATCH target
-                yaml += `  - MATCH,"${groupClashNameMap[commonGroups[0].id]}"\n`;
             } else {
                 yaml += `  - MATCH,DIRECT\n`;
             }
@@ -5617,6 +5614,11 @@
             } catch (e) {
                 compileErr = e;
                 console.error('[saveToCloud] compile threw err=', e, 'compiledYaml=', compiledYaml ? compiledYaml.slice(0, 100) : 'empty');
+            }
+            if (compileErr) {
+                // 编译失败时不要带旧缓存上传,否则 clash 订阅会继续吐过期配置(与 v2ray 订阅不一致)
+                compiledYaml = '';
+                showToast('编译失败,已跳过旧配置,请修正后重新保存');
             }
             const targetUuid = impersonatedUuid || currentUser.uuid;
             const payload = {

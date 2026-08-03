@@ -1,6 +1,6 @@
 import { getUser, putUser, getConfig, putConfig, setSubToken, deleteSubToken, getSubTokenOwner } from '../lib/kv.js';
 import { randomToken } from '../lib/uuid.js';
-import { buildShareLinks } from '../lib/subscription.js';
+import { buildShareLinks, nodesHash } from '../lib/subscription.js';
 import { dedupConfigAgainstExisting } from '../lib/dedup.js';
 import { json, badRequest, forbidden, notFound } from './_resp.js';
 
@@ -76,16 +76,26 @@ export async function handleSaveConfig(ctx) {
         console.info('[config] orphan-cleanup uuid=' + uuid + ' removed=' + orphansRemoved + ' remaining=' + cleanedNodes.length);
     }
 
+    // 计算当前节点集的指纹,用于判断缓存 compiledYaml 是否仍有效
+    const nodeHash = await nodesHash(cleanedNodes);
+
     const sanitized = {
         nodes: cleanedNodes,
         groups: deduped.groups,
         busNames: rawSanitized.busNames,
         compiledYaml: rawSanitized.compiledYaml,
+        compiledNodesHash: nodeHash,
         updatedAt: Date.now(),
     };
-    // compiledYaml 逻辑: 空字符串视为"未传",保留旧值;有内容则更新
+    // compiledYaml 逻辑:
+    //  - 传了内容 -> 直接用新值(浏览器每次保存都会重编译,必然新鲜)
+    //  - 没传(空串/未定义) -> 只有"节点数据没变"时才允许复用旧缓存;
+    //    节点一旦变化,旧缓存必然失效必须丢弃,否则 clash 订阅会一直吐旧凭证(与 v2ray 订阅不一致)
     if (!sanitized.compiledYaml && sanitized.compiledYaml !== '0') {
-        if (old && old.compiledYaml) sanitized.compiledYaml = old.compiledYaml;
+        const oldHash = old && old.compiledNodesHash;
+        if (old && old.compiledYaml && (oldHash == null || oldHash === nodeHash)) {
+            sanitized.compiledYaml = old.compiledYaml;
+        }
     }
 
     // 若 nodes 非空 -> 确保用户有 subToken

@@ -14,6 +14,20 @@ function encodeFragment(str) {
     return encodeURIComponent(str).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }
 
+// 对节点数组做规范化序列化并取 SHA-256,用于校验缓存的 compiledYaml 是否仍与当前节点一致。
+// 每次保存时写入 compiledNodesHash,clash 订阅端用它与当前节点比对,不一致就判定缓存过期。
+export async function nodesHash(nodes) {
+    const canonical = (Array.isArray(nodes) ? nodes : []).map(n => {
+        const copy = Object.assign({}, n);
+        delete copy.id;
+        delete copy._clashName;
+        return copy;
+    });
+    const json = JSON.stringify(canonical);
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(json));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // 把 "mode: websocket, host: foo, path: \"/bar\", tls: true" 解析为对象
 function parsePluginOpts(s) {
     const out = {};
@@ -265,8 +279,10 @@ export function compileClashYaml(cfg) {
             } else if (n.type === 'hysteria2' || n.type === 'hy2') {
                 yaml += `  - name: ${name}\n    type: hysteria2\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
                 yaml += `    password: ${yamlEscape(n.pass || '')}\n`;
+                yaml += `    alpn: [${yamlEscape(n.alpn || 'h3')}]\n`;
                 if (n.sni) yaml += `    sni: ${yamlEscape(n.sni)}\n`;
-                if (n.skipCertVerify) yaml += `    skip-cert-verify: true\n`;
+                if (n.pinSHA256) yaml += `    fingerprint: ${yamlEscape(n.pinSHA256)}\n`;
+                yaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
             } else if (n.type === 'tuic') {
                 yaml += `  - name: ${name}\n    type: tuic\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
                 yaml += `    uuid: ${yamlEscape(n.uuid || '')}\n    password: ${yamlEscape(n.pass || '')}\n`;

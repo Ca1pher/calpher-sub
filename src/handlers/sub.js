@@ -1,5 +1,5 @@
 import { getSubTokenOwner, getUser, getConfig } from '../lib/kv.js';
-import { buildShareLinks, toBase64Sub, compileClashYaml } from '../lib/subscription.js';
+import { buildShareLinks, toBase64Sub, compileClashYaml, nodesHash } from '../lib/subscription.js';
 import { notFound, text } from './_resp.js';
 
 // /sub/<token>/clash | /sub/<token>/v2ray | /sub/<token>/group/<groupId>
@@ -28,7 +28,16 @@ export async function handlePublicSubscription(env, request, path) {
     }
 
     if (kind === 'clash') {
-        let yaml = cfg.compiledYaml || '';
+        // 缓存 compiledYaml 只有在"节点数据未变"时才可信(compiledNodesHash 校验),
+        // 否则直接按当前节点重算,避免 clash 订阅吐旧凭证、与 v2ray 订阅不一致。
+        let yaml = '';
+        if (cfg.compiledNodesHash) {
+            const nodeHash = await nodesHash(cfg.nodes);
+            if (cfg.compiledNodesHash === nodeHash) yaml = cfg.compiledYaml || '';
+        } else {
+            // 旧数据没有指纹: 沿用原逻辑信任缓存(等用户下一次保存写入新指纹)
+            yaml = cfg.compiledYaml || '';
+        }
         // 旧缓存可能含 uuid: undefined 或 reality-opts 旧格式, 降级到服务端生成
         if (!yaml || yaml.includes('uuid: undefined') || yaml.includes('publicKey:') || yaml.includes('shortId:')) {
             yaml = compileClashYaml(cfg);
