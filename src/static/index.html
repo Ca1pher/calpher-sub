@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calpher 订阅管理</title>
-    <meta name="description" content="Calpher 订阅管理 -- 多用户 Clash/V2Ray/小火箭 订阅编排与分发平台">
+    <meta name="description" content="Calpher 订阅管理 -- VPS 节点编排与 Clash/V2Ray/小火箭订阅分发平台">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050706'/%3E%3Cpath d='M16 20 H35 A9 9 0 0 1 35 38 H29 A9 9 0 0 0 29 56 H50' fill='none' stroke='%232aa9e8' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='20' r='6' fill='%230c1210' stroke='%2323e2a0' stroke-width='4'/%3E%3Ccircle cx='50' cy='56' r='6' fill='%230c1210' stroke='%232aa9e8' stroke-width='4'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -64,6 +64,17 @@
 
             color-scheme: dark;
         }
+
+        html[data-accent="emerald"] { --accent: #16a374; --brass: #23e2a0; --brass-strong: #168d65; --brass-soft: rgba(35,226,160,.13); --brass-line: rgba(35,226,160,.3); --brass-ink: #0d6f4d; }
+        html[data-accent="ocean"] { --accent: #1a7ea8; --brass: #2aa9e8; --brass-strong: #157aa8; --brass-soft: rgba(42,169,232,.12); --brass-line: rgba(42,169,232,.3); --brass-ink: #0e5a78; }
+        html[data-accent="iris"] { --accent: #7553d2; --brass: #845ee7; --brass-strong: #6843c4; --brass-soft: rgba(132,94,231,.13); --brass-line: rgba(132,94,231,.3); --brass-ink: #53349f; }
+        html[data-accent="amber"] { --accent: #b77612; --brass: #e69d23; --brass-strong: #b9750f; --brass-soft: rgba(230,157,35,.14); --brass-line: rgba(230,157,35,.32); --brass-ink: #80500a; }
+        html[data-accent="sakura"] { --accent: #bd3f68; --brass: #e0527c; --brass-strong: #b93660; --brass-soft: rgba(224,82,124,.13); --brass-line: rgba(224,82,124,.3); --brass-ink: #92294c; }
+        [data-theme="dark"][data-accent="emerald"] { --brass-ink: #8ff0cc; }
+        [data-theme="dark"][data-accent="ocean"] { --brass-ink: #8fdcff; }
+        [data-theme="dark"][data-accent="iris"] { --brass-ink: #cbbcff; }
+        [data-theme="dark"][data-accent="amber"] { --brass-ink: #ffd891; }
+        [data-theme="dark"][data-accent="sakura"] { --brass-ink: #ffb1c9; }
 
         html, body {
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -698,6 +709,259 @@
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
 
+        /* —— Workbench application shell —— */
+        html, body { letter-spacing: 0; }
+        body { padding: 18px; }
+        .sub-shell {
+            width: min(1800px, 100%);
+            min-height: calc(100vh - 36px);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 224px minmax(0, 1fr) 286px;
+            gap: 14px;
+        }
+        .shell-surface {
+            border: 1px solid var(--line);
+            background: color-mix(in srgb, var(--paper) 91%, transparent);
+            box-shadow: 0 18px 50px -34px rgba(13, 28, 22, .42);
+            backdrop-filter: blur(24px) saturate(145%);
+        }
+        .sub-sidebar,
+        .sub-details {
+            position: sticky;
+            top: 18px;
+            height: calc(100vh - 36px);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .sub-sidebar {
+            display: flex;
+            flex-direction: column;
+            padding: 18px 12px 12px;
+        }
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 3px 9px 18px;
+            border-bottom: 1px solid var(--line);
+        }
+        .sidebar-brand .brand-mark {
+            flex: 0 0 auto;
+        }
+        .sidebar-brand strong {
+            display: block;
+            color: var(--ink);
+            font-size: 15px;
+        }
+        .sidebar-brand small {
+            display: block;
+            margin-top: 3px;
+            color: var(--ink-soft);
+            font: 9px/1.2 "JetBrains Mono", monospace;
+            text-transform: uppercase;
+        }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 16px 0;
+        }
+        .sidebar-nav .tab-btn,
+        .sidebar-link {
+            width: 100%;
+            min-height: 43px;
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr);
+            align-items: center;
+            border: 1px solid transparent !important;
+            border-radius: 11px !important;
+            padding: 0 10px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: var(--ink-soft) !important;
+            text-align: left;
+            text-decoration: none;
+            font-size: 12px !important;
+            cursor: pointer;
+        }
+        .sidebar-nav .tab-btn i,
+        .sidebar-link i {
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            margin: 0 !important;
+            border-radius: 8px;
+            background: var(--paper-2);
+            color: var(--brass-strong);
+        }
+        .sidebar-nav .tab-btn:hover,
+        .sidebar-nav .tab-btn.active,
+        .sidebar-link:hover {
+            border-color: var(--line) !important;
+            background: var(--paper-2) !important;
+            color: var(--ink) !important;
+        }
+        .sidebar-section-label {
+            padding: 8px 10px 5px;
+            color: var(--ink-soft);
+            font: 9px/1.2 "JetBrains Mono", monospace;
+            text-transform: uppercase;
+        }
+        .sidebar-account {
+            margin-top: auto;
+            padding: 13px 9px 4px;
+            border-top: 1px solid var(--line);
+            color: var(--ink-soft);
+            font-size: 10px;
+            line-height: 1.6;
+        }
+        .sub-core {
+            min-width: 0;
+        }
+        .sub-core > header {
+            position: static !important;
+            min-height: 72px;
+            margin-bottom: 14px;
+            border: 0 !important;
+            border-radius: 0;
+            background: transparent !important;
+            backdrop-filter: none;
+        }
+        .sub-core > header > div {
+            max-width: none;
+            padding: 8px 4px;
+        }
+        .sub-core > main {
+            max-width: none !important;
+            padding: 0 !important;
+        }
+        .sub-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .sub-metric {
+            min-height: 126px;
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 17px;
+            background:
+                radial-gradient(circle at 88% 12%, var(--metric-glow, rgba(42,169,232,.22)), transparent 43%),
+                color-mix(in srgb, var(--paper) 94%, transparent);
+            box-shadow: 0 16px 38px -30px rgba(13, 28, 22, .5);
+        }
+        .sub-metric:nth-child(2) { --metric-glow: rgba(35,226,160,.2); }
+        .sub-metric:nth-child(3) { --metric-glow: rgba(238,184,74,.17); }
+        .sub-metric:nth-child(4) { --metric-glow: rgba(230,105,125,.15); }
+        .sub-metric > span {
+            display: block;
+            color: var(--ink-soft);
+            font: 9px/1.2 "JetBrains Mono", monospace;
+            text-transform: uppercase;
+        }
+        .sub-metric h3 {
+            margin: 8px 0 5px;
+            color: var(--ink-soft);
+            font-size: 12px;
+        }
+        .sub-metric strong {
+            color: var(--ink);
+            font: 600 29px/1 "JetBrains Mono", monospace;
+        }
+        .sub-metric small {
+            margin-left: 5px;
+            color: var(--ink-soft);
+            font: 10px/1 "Inter", sans-serif;
+        }
+        .sub-metric p {
+            margin-top: 10px;
+            color: var(--ink-soft);
+            font-size: 10px;
+        }
+        .sub-details {
+            display: grid;
+            grid-template-rows: 64px minmax(0, 1fr);
+        }
+        .sub-details-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            border-bottom: 1px solid var(--line);
+        }
+        .sub-details-head h2 {
+            margin: 0;
+            color: var(--ink);
+            font-size: 15px;
+        }
+        .sub-details-head i {
+            color: #16a36f;
+            font-size: 8px;
+        }
+        .sub-details-scroll {
+            padding: 18px;
+            overflow: auto;
+        }
+        .sub-detail-block {
+            padding-bottom: 18px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--line);
+        }
+        .sub-detail-block:last-child {
+            margin-bottom: 0;
+            border: 0;
+        }
+        .sub-detail-block > span {
+            display: block;
+            margin-bottom: 9px;
+            color: var(--ink-soft);
+            font: 9px/1.2 "JetBrains Mono", monospace;
+            text-transform: uppercase;
+        }
+        .sub-detail-block h3 {
+            margin: 0 0 8px;
+            color: var(--ink);
+            font-size: 13px;
+        }
+        .sub-detail-block p {
+            color: var(--ink-soft);
+            font-size: 11px;
+            line-height: 1.65;
+        }
+        .detail-status-list {
+            display: grid;
+            gap: 10px;
+        }
+        .detail-status-list div {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--ink-soft);
+            font-size: 10px;
+        }
+        .detail-status-list b {
+            color: var(--ink);
+            font-family: "JetBrains Mono", monospace;
+            text-align: right;
+        }
+        @media (max-width: 1280px) {
+            .sub-shell { grid-template-columns: 204px minmax(0, 1fr); }
+            .sub-details { display: none; }
+        }
+        @media (max-width: 920px) {
+            body { padding: 10px; }
+            .sub-shell { display: block; }
+            .sub-sidebar { display: none; }
+            .sub-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 560px) {
+            .sub-metrics { grid-template-columns: 1fr; }
+            .sub-metric { min-height: 108px; }
+        }
+
         /* —— Calpher Workbench 接入 —— */
         .workbench-back-btn {
             display: none;
@@ -724,9 +988,14 @@
             min-height: 100vh;
         }
         body[data-embed] header,
-        body[data-embed] .workbench-back-btn {
+        body[data-embed] .workbench-back-btn,
+        body[data-embed] .sub-sidebar,
+        body[data-embed] .sub-details,
+        body[data-embed] .sub-metrics {
             display: none !important;
         }
+        body[data-embed] { padding: 0; }
+        body[data-embed] .sub-shell { display: block; min-height: 0; }
         body[data-embed] main {
             max-width: none !important;
             padding: 12px !important;
@@ -734,15 +1003,52 @@
         body[data-embed] .scroll-mt-20 {
             scroll-margin-top: 12px;
         }
+        .embed-tabs {
+            display: none;
+        }
+        body[data-embed] .embed-tabs {
+            position: sticky;
+            top: 0;
+            z-index: 45;
+            display: flex;
+            gap: 4px;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--line);
+            background: color-mix(in srgb, var(--paper) 94%, transparent);
+            backdrop-filter: blur(16px);
+        }
+        .embed-tab {
+            min-height: 32px;
+            padding: 6px 11px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--ink-soft);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .embed-tab.active {
+            border-color: var(--line);
+            background: var(--paper-2);
+            color: var(--ink);
+        }
     </style>
     <script>
         // FOUC 预防：在 <body> 渲染前同步设置主题
         (function applyInitialTheme() {
             try {
+                const requested = new URLSearchParams(location.search).get('theme');
+                const accent = new URLSearchParams(location.search).get('accent');
                 const saved = localStorage.getItem('calpher.theme');
                 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const theme = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
+                const theme = requested === 'dark' || requested === 'light'
+                    ? requested
+                    : (saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light'));
                 if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                if (['emerald', 'ocean', 'iris', 'amber', 'sakura'].includes(accent)) {
+                    document.documentElement.setAttribute('data-accent', accent);
+                }
                 console.info('[theme] initial=' + theme + ' (saved=' + saved + ', prefersDark=' + prefersDark + ')');
             } catch (e) {
                 console.warn('[theme] initial detection failed', e);
@@ -750,7 +1056,7 @@
         })();
     </script>
 </head>
-<body class="text-slate-800 flex flex-col min-h-screen">
+<body class="text-slate-800 min-h-screen">
     <script>
         // Calpher Workbench embed/mobile handoff.
         (function initWorkbenchBridge() {
@@ -761,7 +1067,7 @@
                 document.body.dataset.embed = '1';
                 try {
                     window.parent.postMessage({ source: 'kypher-embed', type: 'ready' }, WORKBENCH_ORIGIN);
-                    window.parent.postMessage({ source: 'kypher-embed', type: 'title', title: '订阅管理' }, WORKBENCH_ORIGIN);
+                    window.parent.postMessage({ source: 'kypher-embed', type: 'title', title: 'Calpher 订阅管理' }, WORKBENCH_ORIGIN);
                 } catch (e) {}
             } else if (params.get('from') === 'workbench') {
                 document.body.dataset.fromWorkbench = '1';
@@ -771,15 +1077,58 @@
                 if (event.origin !== WORKBENCH_ORIGIN) return;
                 const data = event.data;
                 if (!data || data.source !== 'kypher-embed') return;
+                if (data.type === 'theme' && (data.theme === 'dark' || data.theme === 'light')) {
+                    if (data.theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                    else document.documentElement.removeAttribute('data-theme');
+                    if (['emerald', 'ocean', 'iris', 'amber', 'sakura'].includes(data.accent)) {
+                        document.documentElement.setAttribute('data-accent', data.accent);
+                    }
+                }
             });
         })();
     </script>
 
-    <a class="workbench-back-btn" href="https://www.kypher72.indevs.in" rel="noopener">
+    <a class="workbench-back-btn" href="https://www.kypher72.indevs.in/workbench" rel="noopener">
         <i class="fa-solid fa-arrow-left"></i>
         返回工作台
     </a>
 
+    <div class="sub-shell">
+        <aside class="sub-sidebar shell-surface">
+            <div class="sidebar-brand">
+                <div class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 6.5 H13 A3.5 3.5 0 0 1 13 13.5 H11 A3.5 3.5 0 0 0 11 20.5 H19" stroke="#2aa9e8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="5" cy="6.5" r="2.3" fill="#0c1210" stroke="#23e2a0" stroke-width="1.5"/>
+                        <circle cx="19" cy="20.5" r="2.3" fill="#0c1210" stroke="#2aa9e8" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div><strong>Calpher 订阅管理</strong><small>Subscription console</small></div>
+            </div>
+            <nav class="sidebar-nav" aria-label="主导航">
+                <button onclick="switchTab('client-workspace')" id="btn-client-workspace" class="tab-btn active">
+                    <i class="fa-solid fa-laptop-code"></i><span class="tab-label">编排工作区</span>
+                </button>
+                <button onclick="switchTab('cloud-workspace')" id="btn-cloud-workspace" class="tab-btn">
+                    <i class="fa-solid fa-link"></i><span class="tab-label">我的订阅</span>
+                </button>
+                <button onclick="switchTab('admin-workspace')" id="btn-admin-workspace" class="tab-btn hidden">
+                    <i class="fa-solid fa-users-gear"></i><span class="tab-label">用户管理</span>
+                </button>
+                <span class="sidebar-section-label">Workflow</span>
+                <a class="sidebar-link" href="#stage-nodes"><i class="fa-solid fa-server"></i><span>节点管理</span></a>
+                <a class="sidebar-link" href="#stage-topology"><i class="fa-solid fa-diagram-project"></i><span>分组编排</span></a>
+                <a class="sidebar-link" href="#stage-output"><i class="fa-solid fa-cloud-arrow-up"></i><span>订阅生成</span></a>
+            </nav>
+            <div class="sidebar-account">统一鉴权启用时由主站签发身份；未配置主站地址或共享密钥时继续使用本站 UUID 登录。</div>
+        </aside>
+
+        <section class="sub-core">
+    <nav class="embed-tabs" aria-label="嵌入视图导航">
+        <button class="embed-tab active" data-embed-tab="client-workspace" onclick="switchTab('client-workspace')">编排工作区</button>
+        <button class="embed-tab" data-embed-tab="cloud-workspace" onclick="switchTab('cloud-workspace')">我的订阅</button>
+        <button id="embed-admin-workspace" class="embed-tab hidden" data-embed-tab="admin-workspace" onclick="switchTab('admin-workspace')">用户管理</button>
+    </nav>
     <!-- 顶部控制条 -->
     <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-5 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -798,7 +1147,7 @@
                         Calpher
                         <span class="text-[10px] tracking-wide text-slate-500 border border-slate-200 px-1.5 py-[1px] rounded-md font-medium">v1.0.7</span>
                     </h1>
-                    <p class="text-[11px] text-slate-500 mt-0.5">代理节点编排 · 订阅生成与分发</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">VPS 节点编排 · 订阅生成与分发</p>
                 </div>
             </div>
 
@@ -814,20 +1163,36 @@
                     <i class="fa-solid fa-moon icon-moon text-[13px]"></i>
                     <i class="fa-solid fa-sun icon-sun text-[13px]"></i>
                 </button>
-                <div class="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
-                    <button onclick="switchTab('client-workspace')" id="btn-client-workspace" class="tab-btn active px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm">
-                        <i class="fa-solid fa-laptop-code mr-1 text-slate-500"></i><span class="tab-label">编排工作区</span>
-                    </button>
-                    <button onclick="switchTab('cloud-workspace')" id="btn-cloud-workspace" class="tab-btn px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">
-                        <i class="fa-solid fa-link mr-1"></i><span class="tab-label">我的订阅</span>
-                    </button>
-                    <button onclick="switchTab('admin-workspace')" id="btn-admin-workspace" class="tab-btn px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 hidden">
-                        <i class="fa-solid fa-users-gear mr-1"></i><span class="tab-label">用户管理</span>
-                    </button>
-                </div>
             </div>
         </div>
     </header>
+
+    <section class="sub-metrics" aria-label="订阅编排概览">
+        <article class="sub-metric">
+            <span>Node / inventory</span>
+            <h3>物理节点</h3>
+            <strong id="metric-node-count">0<small>个</small></strong>
+            <p id="metric-node-note">等待载入工作区</p>
+        </article>
+        <article class="sub-metric">
+            <span>Group / topology</span>
+            <h3>编排分组</h3>
+            <strong id="metric-group-count">0<small>组</small></strong>
+            <p id="metric-group-note">尚未形成链路</p>
+        </article>
+        <article class="sub-metric">
+            <span>Subscription / output</span>
+            <h3>订阅状态</h3>
+            <strong id="metric-sub-count">0<small>条</small></strong>
+            <p id="metric-sub-note">尚未生成订阅</p>
+        </article>
+        <article class="sub-metric">
+            <span>Account / scope</span>
+            <h3>管理用户</h3>
+            <strong id="metric-user-count">1<small>人</small></strong>
+            <p id="metric-user-note">当前身份未载入</p>
+        </article>
+    </section>
 
     <!-- 主工作区 -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 space-y-4">
@@ -1223,6 +1588,40 @@
         </div>
 
     </main>
+        </section>
+
+        <aside class="sub-details shell-surface">
+            <div class="sub-details-head">
+                <h2>编排详情</h2>
+                <i class="fa-solid fa-circle" aria-label="服务在线"></i>
+            </div>
+            <div class="sub-details-scroll">
+                <section class="sub-detail-block">
+                    <span>Identity / current</span>
+                    <h3 id="detail-user-name">等待登录</h3>
+                    <p id="detail-user-role">身份加载后可使用工作区与订阅管理。</p>
+                </section>
+                <section class="sub-detail-block">
+                    <span>Workspace / status</span>
+                    <div class="detail-status-list">
+                        <div><span>节点</span><b id="detail-node-count">0</b></div>
+                        <div><span>真实分组</span><b id="detail-group-count">0</b></div>
+                        <div><span>订阅链接</span><b id="detail-sub-count">0</b></div>
+                    </div>
+                </section>
+                <section class="sub-detail-block">
+                    <span>Flow / next action</span>
+                    <h3 id="detail-next-title">导入节点</h3>
+                    <p id="detail-next-copy">从物理节点池开始，再建立分组和中继链路。</p>
+                </section>
+                <section class="sub-detail-block">
+                    <span>API / compatibility</span>
+                    <h3>外部调用保持原样</h3>
+                    <p>Bearer UUID、公开订阅地址与现有 API 不因网页登录方式变化而改变。</p>
+                </section>
+            </div>
+        </aside>
+    </div>
 
     <!-- 登录遮罩 -->
     <div id="login-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center hidden p-4">
@@ -1998,7 +2397,57 @@
                 setStageDone('stage-1', hasNodes, hasNodes ? (nodes.length + ' 个节点已就绪') : '导入或手动添加物理服务器');
                 setStageDone('stage-2', hasGroups, hasGroups ? (groups.length + ' 个编排分组') : '把节点分组、串成中继链');
                 setStageDone('stage-3', hasSub, hasSub ? '订阅已生成，可在「我的订阅」查看' : '编译并保存，得到订阅链接');
+                refreshWorkbenchMetrics();
             } catch (e) { /* 渲染早期变量可能未就绪，忽略 */ }
+        }
+        function refreshWorkbenchMetrics() {
+            const realGroups = Array.isArray(groups) ? groups.filter(g => !isStashGroup(g)) : [];
+            const subUrls = lastSubInfo && lastSubInfo.urls
+                ? [lastSubInfo.urls.clash, lastSubInfo.urls.v2ray].filter(Boolean).length
+                    + (Array.isArray(lastSubInfo.urls.groups) ? lastSubInfo.urls.groups.length : 0)
+                : 0;
+            const userCount = typeof cachedUsers !== 'undefined' && Array.isArray(cachedUsers) && cachedUsers.length
+                ? cachedUsers.length
+                : (currentUser ? 1 : 0);
+            const setValue = (id, value) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.firstChild) el.firstChild.nodeValue = String(value);
+                else el.textContent = String(value);
+            };
+            setValue('metric-node-count', nodes.length);
+            setValue('metric-group-count', realGroups.length);
+            setValue('metric-sub-count', subUrls);
+            setValue('metric-user-count', userCount);
+            setValue('detail-node-count', nodes.length);
+            setValue('detail-group-count', realGroups.length);
+            setValue('detail-sub-count', subUrls);
+
+            const nodeNote = document.getElementById('metric-node-note');
+            const groupNote = document.getElementById('metric-group-note');
+            const subNote = document.getElementById('metric-sub-note');
+            const userNote = document.getElementById('metric-user-note');
+            const nextTitle = document.getElementById('detail-next-title');
+            const nextCopy = document.getElementById('detail-next-copy');
+            if (nodeNote) nodeNote.textContent = nodes.length ? '节点池已就绪' : '等待导入或手动添加';
+            if (groupNote) groupNote.textContent = realGroups.length ? '拓扑可参与订阅编译' : '尚未形成链路';
+            if (subNote) subNote.textContent = subUrls ? '订阅已生成并可分发' : '尚未生成订阅';
+            if (userNote) userNote.textContent = currentUser
+                ? (currentUser.role === 'admin' ? '管理员视图' : '个人工作区')
+                : '当前身份未载入';
+            if (!nodes.length) {
+                if (nextTitle) nextTitle.textContent = '导入节点';
+                if (nextCopy) nextCopy.textContent = '从物理节点池开始，再建立分组和中继链路。';
+            } else if (!realGroups.length) {
+                if (nextTitle) nextTitle.textContent = '建立编排分组';
+                if (nextCopy) nextCopy.textContent = '节点已经就绪，下一步把节点组织成入口、出口或中继链。';
+            } else if (!subUrls) {
+                if (nextTitle) nextTitle.textContent = '生成订阅';
+                if (nextCopy) nextCopy.textContent = '拓扑已经就绪，编译并保存即可生成订阅链接。';
+            } else {
+                if (nextTitle) nextTitle.textContent = '订阅已就绪';
+                if (nextCopy) nextCopy.textContent = '可以复制订阅链接，或继续调整节点与分组后重新生成。';
+            }
         }
         function setStageDone(stageId, done, hintText) {
             const stage = document.getElementById(stageId);
@@ -2059,8 +2508,8 @@
         // ================= Tab 控制 =================
         function switchTab(tabId) {
             const tabIds = ['client-workspace', 'cloud-workspace', 'admin-workspace'];
-            const idleBtnCls = "tab-btn px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900";
-            const activeBtnCls = "tab-btn active px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm";
+            const idleBtnCls = "tab-btn";
+            const activeBtnCls = "tab-btn active";
 
             tabIds.forEach(id => {
                 const panel = document.getElementById('tab-' + id);
@@ -2080,6 +2529,9 @@
                 const wasHidden = targetBtn.classList.contains('hidden');
                 targetBtn.className = activeBtnCls + (wasHidden ? ' hidden' : '');
             }
+            document.querySelectorAll('[data-embed-tab]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.embedTab === tabId);
+            });
             console.info('[ui] switchTab tabId=' + tabId);
         }
 
@@ -5577,6 +6029,15 @@
             opts.credentials = 'include';
             const resp = await fetch(path, opts);
             if (resp.status === 401) {
+                try {
+                    const payload = await resp.clone().json();
+                    if (payload && payload.loginUrl) {
+                        window.top.location.href = payload.loginUrl;
+                        throw new Error('redirecting');
+                    }
+                } catch (redirectError) {
+                    if (redirectError.message === 'redirecting') throw redirectError;
+                }
                 document.getElementById('login-modal').classList.remove('hidden');
                 throw new Error('unauthorized');
             }
@@ -5608,9 +6069,15 @@
             info.classList.add('flex');
             document.getElementById('header-user-name').textContent = me.name || me.uuid.slice(0, 8);
             document.getElementById('header-user-role').textContent = me.role === 'admin' ? '管理员' : '用户';
+            document.getElementById('detail-user-name').textContent = me.name || me.uuid.slice(0, 8);
+            document.getElementById('detail-user-role').textContent = me.role === 'admin'
+                ? '统一管理员，可查看和管理所有用户工作区。'
+                : '当前为个人工作区，只操作自己的节点与订阅。';
             if (me.role === 'admin') {
                 document.getElementById('btn-admin-workspace').classList.remove('hidden');
+                document.getElementById('embed-admin-workspace').classList.remove('hidden');
             }
+            refreshWorkbenchMetrics();
             loadConfigFromServer();
         }
 
@@ -5643,6 +6110,9 @@
                 if (data && data.subscription) {
                     lastSubInfo = data.subscription;
                     renderSubscriptionPanel();
+                    if (document.body.dataset.embed === '1' || document.body.dataset.fromWorkbench === '1') {
+                        switchTab('cloud-workspace');
+                    }
                 } else {
                     lastSubInfo = null;
                     renderSubscriptionPanel();
@@ -5734,6 +6204,7 @@
             if (!lastSubInfo || !lastSubInfo.urls) {
                 empty.classList.remove('hidden');
                 area.classList.add('hidden');
+                refreshWorkbenchMetrics();
                 return;
             }
             empty.classList.add('hidden');
@@ -5755,6 +6226,7 @@
                 row.querySelector('.qr-btn').onclick = () => showQrCode(g.url, '分组订阅 · ' + g.name);
                 groupBox.appendChild(row);
             });
+            refreshWorkbenchMetrics();
         }
 
         function copySubLink(id) {
@@ -5893,6 +6365,7 @@
                     </td>`;
                 tbody.appendChild(tr);
             });
+            refreshWorkbenchMetrics();
             tbody.querySelectorAll('.impersonate-btn').forEach(b => b.onclick = () => startImpersonate(b.dataset.uuid, b.dataset.name));
             tbody.querySelectorAll('.delete-btn').forEach(b => b.onclick = () => deleteUser(b.dataset.uuid));
         }

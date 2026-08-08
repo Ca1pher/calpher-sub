@@ -16,6 +16,14 @@ import {
 } from './handlers/crud.js';
 import { handlePublicSubscription } from './handlers/sub.js';
 import { json, badRequest, unauthorized, notFound } from './handlers/_resp.js';
+import {
+    buildLogoutCookie as buildFederatedLogoutCookie,
+    buildMasterLoginUrl,
+    buildSessionCookie as buildFederatedSessionCookie,
+    createSession as createFederatedSession,
+    getAuthMode,
+    verifyHandoffTicket,
+} from '../auth/auth.js';
 
 async function readJsonBody(request) {
     const ct = request.headers.get('Content-Type') || '';
@@ -37,14 +45,40 @@ async function route(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+    const federated = getAuthMode(env) === 'federated';
 
     // 1. 公开订阅(无需登录)
     if (path.startsWith('/sub/')) {
         return await handlePublicSubscription(env, request, path);
     }
 
-    // 2. 登录(无需登录)
+    // 2. Calpher 统一鉴权回调(无需登录)
+    if (path === '/.calpher/auth/callback' && method === 'GET') {
+        if (!federated) return notFound('route not found');
+        const verified = await verifyHandoffTicket(env, url.searchParams.get('ticket'), url.origin);
+        if (!verified) return unauthorized('登录票据无效或已过期');
+        const sid = await createFederatedSession(env, verified.user);
+        const callbackTarget = new URL(verified.returnUrl);
+        return new Response(null, {
+            status: 302,
+            headers: {
+                'Location': verified.returnUrl,
+                'Set-Cookie': buildFederatedSessionCookie(sid, request, env, {
+                    partitioned: callbackTarget.searchParams.get('embed') === '1',
+                }),
+                'Cache-Control': 'no-store',
+            },
+        });
+    }
+
+    // 3. 独立模式登录(无需登录)
     if (path === '/api/auth/login' && method === 'POST') {
+        if (federated) {
+            return json({
+                error: '当前站点使用统一鉴权',
+                loginUrl: buildMasterLoginUrl(request, env, `${url.origin}/`),
+            }, 409);
+        }
         const body = await readJsonBody(request);
         const uuid = body && body.uuid && body.uuid.trim();
         if (!uuid) return badRequest('uuid 必填');
@@ -60,19 +94,57 @@ async function route(request, env, ctx) {
     if (path === '/api/auth/logout' && method === 'POST') {
         const authCtx = await authenticate(request, env);
         if (authCtx.sid) await logout(env, authCtx.sid);
-        return json({ ok: true }, 200, { 'Set-Cookie': buildLogoutCookie() });
+        return json({ ok: true }, 200, {
+            'Set-Cookie': federated
+                ? buildFederatedLogoutCookie(request, env)
+                : buildLogoutCookie(),
+        });
+    }
+    if (path === '/api/auth/logout' && method === 'GET') {
+        if (!federated) return notFound('route not found');
+        const partitioned = url.searchParams.get('partitioned') === '1';
+        const headers = {
+            'Cache-Control': 'no-store',
+            'Set-Cookie': buildFederatedLogoutCookie(request, env, { partitioned }),
+        };
+        if (partitioned) {
+            headers['Content-Type'] = 'text/html; charset=utf-8';
+            return new Response('<!doctype html><title>Signed out</title>', { headers });
+        }
+        let masterOrigin = '';
+        try { masterOrigin = new URL(env.AUTH_MASTER_ORIGIN).origin; } catch (e) {}
+        const returnUrl = url.searchParams.get('return');
+        let target = masterOrigin ? new URL('/login', masterOrigin).toString() : '/';
+        if (returnUrl) {
+            try {
+                const candidate = new URL(returnUrl);
+                if (candidate.origin !== masterOrigin) return badRequest('logout return 地址无效');
+                target = candidate.toString();
+            } catch (e) {
+                return badRequest('logout return 地址无效');
+            }
+        }
+        headers.Location = target;
+        return new Response(null, { status: 302, headers });
     }
 
-    // 3. 需要登录的接口 - 统一鉴权
+    // 4. 需要登录的接口
     const authCtx = await authenticate(request, env);
 
-    // 静态 HTML(也要先鉴权以决定是否注入登录态;但页面前端自己会调 /api/me 判断)
+    // 统一鉴权模式下页面入口直接跳主站；独立模式保留 UUID 登录弹窗。
     if (path === '/' || path === '/index.html') {
+        if (federated && !authCtx.user) {
+            return Response.redirect(buildMasterLoginUrl(request, env), 302);
+        }
         return htmlResponse();
     }
 
     if (!authCtx.user) {
-        if (path.startsWith('/api/')) return unauthorized('请先登录');
+        if (path.startsWith('/api/')) {
+            const payload = { error: '请先登录' };
+            if (federated) payload.loginUrl = buildMasterLoginUrl(request, env, `${url.origin}/`);
+            return json(payload, 401);
+        }
         return htmlResponse();
     }
 

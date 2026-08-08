@@ -1,5 +1,9 @@
 import { getSession, setSession, deleteSession, getUser, putUser, kvKey } from './kv.js';
 import { isValidUuid } from './uuid.js';
+import {
+    authenticate as authenticateCalpher,
+    getAuthMode,
+} from '../../auth/auth.js';
 
 const COOKIE_NAME = 'cs_sid';
 const SESSION_TTL = 60 * 60 * 24 * 30; // 30 天
@@ -49,6 +53,19 @@ export async function authenticate(request, env) {
                 return { user, source: 'bearer' };
             }
             console.warn('[auth] bearer UUID not registered uuid=' + token);
+        }
+    }
+
+    // 配置主站地址 + 共享密钥时，优先接受 Calpher 统一会话。
+    // 统一管理员映射到项目已有 ADMIN_UUID，业务层继续使用原 uuid/role 契约。
+    if (getAuthMode(env) === 'federated') {
+        const calpher = await authenticateCalpher(request, env);
+        if (calpher.user) {
+            await ensureAdminBootstrap(env);
+            const adminUuid = (env.ADMIN_UUID || '').trim();
+            const user = isValidUuid(adminUuid) ? await getUser(kv, adminUuid) : null;
+            if (user) return { user, source: 'calpher' };
+            console.warn('[auth] 统一会话有效，但 ADMIN_UUID 未配置或未完成初始化');
         }
     }
 
