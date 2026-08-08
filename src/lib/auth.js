@@ -21,16 +21,15 @@ export function buildSessionCookie(sid, maxAge = SESSION_TTL) {
         `${COOKIE_NAME}=${encodeURIComponent(sid)}`,
         'Path=/',
         'HttpOnly',
-        'SameSite=Lax',
+        'SameSite=None',
         `Max-Age=${maxAge}`,
-        // 'Secure', // 在 *.workers.dev / 自定义域 HTTPS 部署时浏览器需要;本地开发 wrangler dev 不带证书,加上会导致 cookie 写不进
+        'Secure',
     ];
-    if (maxAge > 0) parts.push('Secure');
     return parts.join('; ');
 }
 
 export function buildLogoutCookie() {
-    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
 }
 
 // 从 cookie 或 Authorization: Bearer 中解析当前用户

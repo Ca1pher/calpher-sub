@@ -695,6 +695,43 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
+
+        /* —— Calpher Workbench 接入 —— */
+        .workbench-back-btn {
+            display: none;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            width: fit-content;
+            margin: 12px 0 0 16px;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 13px;
+            border-radius: 10px;
+            border: 1px solid var(--brass-line);
+            background: var(--paper);
+            color: var(--brass-ink);
+            font-size: 12px;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
+        }
+        .workbench-back-btn:hover { background: var(--brass-soft); color: var(--ink); }
+        body[data-from-workbench] .workbench-back-btn { display: inline-flex; }
+        body[data-embed] {
+            min-height: 100vh;
+        }
+        body[data-embed] header,
+        body[data-embed] .workbench-back-btn {
+            display: none !important;
+        }
+        body[data-embed] main {
+            max-width: none !important;
+            padding: 12px !important;
+        }
+        body[data-embed] .scroll-mt-20 {
+            scroll-margin-top: 12px;
+        }
     </style>
     <script>
         // FOUC 预防：在 <body> 渲染前同步设置主题
@@ -712,6 +749,34 @@
     </script>
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen">
+    <script>
+        // Calpher Workbench embed/mobile handoff.
+        (function initWorkbenchBridge() {
+            const WORKBENCH_ORIGIN = 'https://www.kypher72.indevs.in';
+            const params = new URLSearchParams(location.search);
+
+            if (params.get('embed') === '1') {
+                document.body.dataset.embed = '1';
+                try {
+                    window.parent.postMessage({ source: 'kypher-embed', type: 'ready' }, WORKBENCH_ORIGIN);
+                    window.parent.postMessage({ source: 'kypher-embed', type: 'title', title: '订阅管理' }, WORKBENCH_ORIGIN);
+                } catch (e) {}
+            } else if (params.get('from') === 'workbench') {
+                document.body.dataset.fromWorkbench = '1';
+            }
+
+            window.addEventListener('message', function(event) {
+                if (event.origin !== WORKBENCH_ORIGIN) return;
+                const data = event.data;
+                if (!data || data.source !== 'kypher-embed') return;
+            });
+        })();
+    </script>
+
+    <a class="workbench-back-btn" href="https://www.kypher72.indevs.in" rel="noopener">
+        <i class="fa-solid fa-arrow-left"></i>
+        返回工作台
+    </a>
 
     <!-- 顶部控制条 -->
     <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-40">
