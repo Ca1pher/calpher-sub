@@ -330,6 +330,43 @@
             #node-context-menu { max-width: 220px; }
         }
 
+        /* 嵌入主站窗口时，长表单必须在弹窗内部滚动，保证底部操作始终可达。 */
+        .modal-scroll-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            max-height: min(900px, calc(100dvh - 24px));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-gutter: stable;
+            border-color: var(--line) !important;
+            background: color-mix(in srgb, var(--paper) 97%, transparent) !important;
+        }
+        .modal-scroll-panel .manual-modal-header {
+            position: sticky;
+            top: -20px;
+            z-index: 2;
+            padding-top: 20px;
+            background: color-mix(in srgb, var(--paper) 96%, transparent);
+            backdrop-filter: blur(10px);
+        }
+        .modal-scroll-panel .manual-modal-actions {
+            position: sticky;
+            bottom: -20px;
+            z-index: 2;
+            padding-bottom: 20px;
+            background: color-mix(in srgb, var(--paper) 96%, transparent);
+            backdrop-filter: blur(10px);
+        }
+        .modal-scroll-panel > form {
+            min-height: 0;
+        }
+        @media (max-height: 720px) {
+            .modal-scroll-panel {
+                max-height: calc(100dvh - 16px);
+            }
+        }
+
         @media (max-width: 640px) {
             /* 顶部 tab 按钮：图标+短文本 */
             #btn-client-workspace, #btn-cloud-workspace, #btn-admin-workspace {
@@ -713,13 +750,18 @@
         html, body { letter-spacing: 0; }
         body { padding: 18px; }
         .sub-shell {
+            --sidebar-width: 224px;
+            --details-width: 286px;
             width: min(1800px, 100%);
             min-height: calc(100vh - 36px);
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 224px minmax(0, 1fr) 286px;
+            grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--details-width);
             gap: 14px;
+            transition: grid-template-columns .22s cubic-bezier(.22, 1, .36, 1);
         }
+        .sub-shell.sidebar-collapsed { --sidebar-width: 66px; }
+        .sub-shell.details-collapsed { --details-width: 58px; }
         .shell-surface {
             border: 1px solid var(--line);
             background: color-mix(in srgb, var(--paper) 91%, transparent);
@@ -745,6 +787,26 @@
             gap: 10px;
             padding: 3px 9px 18px;
             border-bottom: 1px solid var(--line);
+        }
+        .sidebar-brand-copy { min-width: 0; }
+        .shell-collapse-btn {
+            flex: 0 0 auto;
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            margin-left: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--paper-2);
+            color: var(--ink-soft);
+            cursor: pointer;
+            transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+        }
+        .shell-collapse-btn:hover {
+            border-color: var(--brass-line);
+            background: var(--brass-soft);
+            color: var(--brass-ink);
         }
         .sidebar-brand .brand-mark {
             flex: 0 0 auto;
@@ -816,6 +878,25 @@
             color: var(--ink-soft);
             font-size: 10px;
             line-height: 1.6;
+        }
+        .sub-shell.sidebar-collapsed .sub-sidebar { padding-inline: 8px; }
+        .sub-shell.sidebar-collapsed .sidebar-brand {
+            justify-content: center;
+            padding-inline: 0;
+        }
+        .sub-shell.sidebar-collapsed .sidebar-brand .brand-mark,
+        .sub-shell.sidebar-collapsed .sidebar-brand-copy,
+        .sub-shell.sidebar-collapsed .sidebar-section-label,
+        .sub-shell.sidebar-collapsed .sidebar-nav span,
+        .sub-shell.sidebar-collapsed .sidebar-account {
+            display: none;
+        }
+        .sub-shell.sidebar-collapsed .sidebar-brand .shell-collapse-btn { margin-left: 0; }
+        .sub-shell.sidebar-collapsed .sidebar-nav .tab-btn,
+        .sub-shell.sidebar-collapsed .sidebar-link {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            padding-inline: 0 !important;
         }
         .sub-core {
             min-width: 0;
@@ -901,6 +982,11 @@
             color: #16a36f;
             font-size: 8px;
         }
+        .sub-details-head .shell-collapse-btn {
+            margin-left: 8px;
+            color: var(--ink-soft);
+            font-size: 11px;
+        }
         .sub-details-scroll {
             padding: 18px;
             overflow: auto;
@@ -947,8 +1033,22 @@
             font-family: "JetBrains Mono", monospace;
             text-align: right;
         }
+        .sub-shell.details-collapsed .sub-details-head {
+            justify-content: center;
+            padding-inline: 0;
+        }
+        .sub-shell.details-collapsed .sub-details-head h2,
+        .sub-shell.details-collapsed .sub-details-head > i,
+        .sub-shell.details-collapsed .sub-details-scroll {
+            display: none;
+        }
+        .sub-shell.details-collapsed .sub-details-head .shell-collapse-btn { margin-left: 0; }
         @media (max-width: 1280px) {
-            .sub-shell { grid-template-columns: 204px minmax(0, 1fr); }
+            .sub-shell {
+                --sidebar-width: 204px;
+                grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+            }
+            .sub-shell.sidebar-collapsed { --sidebar-width: 66px; }
             .sub-details { display: none; }
         }
         @media (max-width: 920px) {
@@ -983,7 +1083,11 @@
             box-shadow: 0 10px 30px rgba(15, 23, 42, .10);
         }
         .workbench-back-btn:hover { background: var(--brass-soft); color: var(--ink); }
-        body[data-from-workbench] .workbench-back-btn { display: inline-flex; }
+        body[data-from-workbench] .workbench-back-btn {
+            position: relative;
+            display: inline-flex;
+            margin: 10px 12px 0;
+        }
         body[data-embed] {
             min-height: 100vh;
         }
@@ -1006,7 +1110,8 @@
         .embed-tabs {
             display: none;
         }
-        body[data-embed] .embed-tabs {
+        body[data-embed] .embed-tabs,
+        body[data-from-workbench] .embed-tabs {
             position: sticky;
             top: 0;
             z-index: 45;
@@ -1016,6 +1121,26 @@
             border-bottom: 1px solid var(--line);
             background: color-mix(in srgb, var(--paper) 94%, transparent);
             backdrop-filter: blur(16px);
+        }
+        body[data-from-workbench] {
+            padding: 0;
+        }
+        body[data-from-workbench] header,
+        body[data-from-workbench] .sub-sidebar,
+        body[data-from-workbench] .sub-details,
+        body[data-from-workbench] .sub-metrics {
+            display: none !important;
+        }
+        body[data-from-workbench] .sub-shell {
+            display: block;
+            min-height: 0;
+        }
+        body[data-from-workbench] main {
+            max-width: none !important;
+            padding: 12px !important;
+        }
+        body[data-from-workbench] .scroll-mt-20 {
+            scroll-margin-top: 56px;
         }
         .embed-tab {
             min-height: 32px;
@@ -1103,7 +1228,10 @@
                         <circle cx="19" cy="20.5" r="2.3" fill="#0c1210" stroke="#2aa9e8" stroke-width="1.5"/>
                     </svg>
                 </div>
-                <div><strong>Calpher 订阅管理</strong><small>Subscription console</small></div>
+                <div class="sidebar-brand-copy"><strong>Calpher 订阅管理</strong><small>Subscription console</small></div>
+                <button class="shell-collapse-btn" type="button" onclick="toggleSubPanel('sidebar')" aria-label="收起侧边栏" aria-expanded="true" title="收起侧边栏">
+                    <i class="fa-solid fa-angle-left"></i>
+                </button>
             </div>
             <nav class="sidebar-nav" aria-label="主导航">
                 <button onclick="switchTab('client-workspace')" id="btn-client-workspace" class="tab-btn active">
@@ -1594,6 +1722,9 @@
             <div class="sub-details-head">
                 <h2>编排详情</h2>
                 <i class="fa-solid fa-circle" aria-label="服务在线"></i>
+                <button class="shell-collapse-btn" type="button" onclick="toggleSubPanel('details')" aria-label="收起详情栏" aria-expanded="true" title="收起详情栏">
+                    <i class="fa-solid fa-angle-right"></i>
+                </button>
             </div>
             <div class="sub-details-scroll">
                 <section class="sub-detail-block">
@@ -1728,9 +1859,9 @@
     </div>
 
     <!-- 弹窗 2：手动录入代理服务器 / 节点编辑 -->
-    <div id="manual-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md p-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-4">
+    <div id="manual-modal" class="fixed inset-0 overflow-y-auto bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="modal-scroll-panel bg-white border border-slate-200 rounded-xl w-full max-w-md p-5 shadow-2xl">
+            <div class="manual-modal-header flex justify-between items-center border-b border-slate-100 pb-2 mb-4">
                 <h3 id="manual-modal-title" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                     <i class="fa-solid fa-plus text-slate-600"></i> 手动添加物理服务器
                 </h3>
@@ -2042,7 +2173,7 @@
                     </select>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="manual-modal-actions flex justify-end gap-2 pt-2 border-t border-slate-100">
                     <button id="man-delete-btn" type="button" onclick="triggerEditingNodeDelete()" class="mr-auto bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer border border-rose-200 hidden">删除此节点</button>
                     <button type="button" onclick="closeManualModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">关闭</button>
                     <button id="man-submit-btn" type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer shadow-md shadow-indigo-100">保 存</button>
@@ -2282,6 +2413,55 @@
     <!-- ================= JAVASCRIPT ================= -->
     <script>
         // ================= 主题切换（日间 / 夜间） =================
+        const SUB_LAYOUT_KEY = 'calpher.sub.layout';
+
+        function readSubPanelLayout() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(SUB_LAYOUT_KEY) || '{}');
+                return {
+                    sidebar: Boolean(saved.sidebar),
+                    details: Boolean(saved.details),
+                };
+            } catch (e) {
+                return { sidebar: false, details: false };
+            }
+        }
+
+        function applySubPanelLayout(layout = readSubPanelLayout()) {
+            const shell = document.querySelector('.sub-shell');
+            if (!shell) return;
+            shell.classList.toggle('sidebar-collapsed', layout.sidebar);
+            shell.classList.toggle('details-collapsed', layout.details);
+
+            const sidebarButton = document.querySelector('.sidebar-brand .shell-collapse-btn');
+            if (sidebarButton) {
+                sidebarButton.setAttribute('aria-expanded', String(!layout.sidebar));
+                sidebarButton.setAttribute('aria-label', layout.sidebar ? '展开侧边栏' : '收起侧边栏');
+                sidebarButton.title = layout.sidebar ? '展开侧边栏' : '收起侧边栏';
+                sidebarButton.innerHTML = `<i class="fa-solid fa-angle-${layout.sidebar ? 'right' : 'left'}"></i>`;
+            }
+
+            const detailsButton = document.querySelector('.sub-details-head .shell-collapse-btn');
+            if (detailsButton) {
+                detailsButton.setAttribute('aria-expanded', String(!layout.details));
+                detailsButton.setAttribute('aria-label', layout.details ? '展开详情栏' : '收起详情栏');
+                detailsButton.title = layout.details ? '展开详情栏' : '收起详情栏';
+                detailsButton.innerHTML = `<i class="fa-solid fa-angle-${layout.details ? 'left' : 'right'}"></i>`;
+            }
+        }
+
+        function toggleSubPanel(panel) {
+            const layout = readSubPanelLayout();
+            if (panel !== 'sidebar' && panel !== 'details') return;
+            layout[panel] = !layout[panel];
+            try {
+                localStorage.setItem(SUB_LAYOUT_KEY, JSON.stringify(layout));
+            } catch (e) {}
+            applySubPanelLayout(layout);
+        }
+
+        applySubPanelLayout();
+
         function toggleTheme() {
             const root = document.documentElement;
             const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
