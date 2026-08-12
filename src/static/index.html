@@ -746,6 +746,47 @@
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
 
+        /* —— 首屏数据骨架：先稳定页面结构，再让业务数据分区回填 —— */
+        .data-skeleton {
+            position: relative;
+            overflow: hidden;
+            background: var(--paper-2);
+            border-radius: 6px;
+        }
+        .data-skeleton::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--paper) 72%, transparent), transparent);
+            animation: data-skeleton-shimmer 1.35s ease-in-out infinite;
+        }
+        .data-skeleton-line { height: 10px; margin: 8px 12px; }
+        .data-skeleton-line.short { width: 35%; }
+        .data-skeleton-line.medium { width: 58%; }
+        .data-skeleton-line.long { width: 78%; }
+        .data-skeleton-row td { height: 43px; }
+        .data-skeleton-row td > span { display: block; height: 10px; border-radius: 5px; }
+        .data-skeleton-panel { min-height: 132px; padding: 8px 2px; }
+        .data-skeleton-panel .data-skeleton-line { margin-top: 10px; margin-bottom: 10px; }
+        .data-fade-in {
+            animation: data-fade-in .28s ease both;
+        }
+        @keyframes data-skeleton-shimmer {
+            to { transform: translateX(100%); }
+        }
+        @keyframes data-fade-in {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        [data-theme="dark"] .data-skeleton {
+            background: color-mix(in srgb, var(--paper-2) 82%, #fff 18%);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .data-skeleton::after { animation: none; }
+            .data-fade-in { animation: none; }
+        }
+
         /* —— Workbench application shell —— */
         html, body { letter-spacing: 0; }
         body { padding: 18px; }
@@ -1190,10 +1231,19 @@
 
             if (params.get('embed') === '1') {
                 document.body.dataset.embed = '1';
-                try {
-                    window.parent.postMessage({ source: 'kypher-embed', type: 'ready' }, WORKBENCH_ORIGIN);
-                    window.parent.postMessage({ source: 'kypher-embed', type: 'title', title: 'Calpher 订阅管理' }, WORKBENCH_ORIGIN);
-                } catch (e) {}
+                const notifyShellReady = () => {
+                    try {
+                        window.parent.postMessage({ source: 'kypher-embed', type: 'ready' }, WORKBENCH_ORIGIN);
+                        window.parent.postMessage({ source: 'kypher-embed', type: 'title', title: 'Calpher 订阅管理' }, WORKBENCH_ORIGIN);
+                    } catch (e) {}
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        requestAnimationFrame(() => requestAnimationFrame(notifyShellReady));
+                    }, { once: true });
+                } else {
+                    requestAnimationFrame(() => requestAnimationFrame(notifyShellReady));
+                }
             } else if (params.get('from') === 'workbench') {
                 document.body.dataset.fromWorkbench = '1';
             }
@@ -1413,7 +1463,15 @@
                                     </tr>
                                 </thead>
                                 <tbody id="node-table-body" class="text-xs divide-y divide-slate-100">
-                                    <!-- 动态加载节点 -->
+                                    <tr class="data-skeleton-row" aria-hidden="true">
+                                        <td colspan="6"><span class="data-skeleton data-skeleton-line long"></span></td>
+                                    </tr>
+                                    <tr class="data-skeleton-row" aria-hidden="true">
+                                        <td colspan="6"><span class="data-skeleton data-skeleton-line medium"></span></td>
+                                    </tr>
+                                    <tr class="data-skeleton-row" aria-hidden="true">
+                                        <td colspan="6"><span class="data-skeleton data-skeleton-line short"></span></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1439,7 +1497,11 @@
                         <p class="px-4 pt-2 text-[10px] text-slate-400 shrink-0">按分组顺序与中继链条自动绘制 · 入口 → 落地</p>
                         <!-- 拓扑预览容器 -->
                         <div id="topology-container" class="flex-1 m-3 bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-auto text-[11px] font-mono space-y-2">
-                            <!-- 动态加载拓扑 -->
+                            <div class="data-skeleton-panel" aria-hidden="true">
+                                <div class="data-skeleton data-skeleton-line long"></div>
+                                <div class="data-skeleton data-skeleton-line medium"></div>
+                                <div class="data-skeleton data-skeleton-line short"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1508,7 +1570,13 @@
                 </div>
 
                 <!-- 订阅状态提示 -->
-                <div id="sub-status-empty" class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs text-amber-800 flex items-start gap-2">
+                <div id="sub-loading-state" class="data-skeleton-panel border border-slate-200 rounded-lg" aria-live="polite">
+                    <div class="data-skeleton data-skeleton-line long"></div>
+                    <div class="data-skeleton data-skeleton-line medium"></div>
+                    <div class="data-skeleton data-skeleton-line short"></div>
+                </div>
+
+                <div id="sub-status-empty" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs text-amber-800 flex items-start gap-2">
                     <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
                     <div>
                         <p class="font-semibold mb-0.5">尚未生成订阅</p>
@@ -1976,9 +2044,7 @@
                     <!-- VLESS 专属: 加密 + Reality 字段 -->
                     <div id="man-vless-extra">
                         <label class="block text-xs font-semibold text-slate-500 mb-1">加密 (Encryption)</label>
-                        <select id="man-vless-encryption" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none">
-                            <option value="none">none</option>
-                        </select>
+                        <input type="text" id="man-vless-encryption" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="none" value="none">
                         <div class="grid grid-cols-3 gap-2 mt-2">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Flow (Reality)</label>
@@ -2581,6 +2647,27 @@
             } catch (e) { /* 渲染早期变量可能未就绪，忽略 */ }
         }
         function refreshWorkbenchMetrics() {
+            if (typeof workspaceDataLoading !== 'undefined' && workspaceDataLoading) {
+                const setLoadingValue = (id) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (el.firstChild) el.firstChild.nodeValue = '...';
+                    else el.textContent = '...';
+                };
+                ['metric-node-count', 'metric-group-count', 'metric-sub-count', 'metric-user-count', 'detail-node-count', 'detail-group-count', 'detail-sub-count']
+                    .forEach(setLoadingValue);
+                const loadingNotes = {
+                    'metric-node-note': '正在载入节点数据',
+                    'metric-group-note': '正在载入编排结构',
+                    'metric-sub-note': '正在载入订阅状态',
+                    'metric-user-note': currentUser ? '身份已确认，载入工作区' : '正在确认当前身份',
+                };
+                Object.entries(loadingNotes).forEach(([id, text]) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = text;
+                });
+                return;
+            }
             const realGroups = Array.isArray(groups) ? groups.filter(g => !isStashGroup(g)) : [];
             const subUrls = lastSubInfo && lastSubInfo.urls
                 ? [lastSubInfo.urls.clash, lastSubInfo.urls.v2ray].filter(Boolean).length
@@ -2781,6 +2868,20 @@
             const tabsBar = document.getElementById('group-tabs-bar');
             tableBody.innerHTML = '';
             tabsBar.innerHTML = '';
+
+            if (typeof workspaceDataLoading !== 'undefined' && workspaceDataLoading) {
+                tabsBar.innerHTML = `
+                    <span class="data-skeleton h-7 w-24 shrink-0" aria-hidden="true"></span>
+                    <span class="data-skeleton h-7 w-20 shrink-0" aria-hidden="true"></span>
+                    <span class="data-skeleton h-7 w-28 shrink-0" aria-hidden="true"></span>`;
+                tableBody.innerHTML = [78, 58, 36].map(width => `
+                    <tr class="data-skeleton-row" aria-hidden="true">
+                        <td colspan="6"><span class="data-skeleton data-skeleton-line" style="width:${width}%"></span></td>
+                    </tr>`).join('');
+                const selectionBar = document.getElementById('node-selection-bar');
+                if (selectionBar) selectionBar.innerHTML = '正在载入节点池 <span class="text-slate-400">· 页面结构已就绪</span>';
+                return;
+            }
 
             // 1. 渲染分组 Tab
             // 首先是 "全部" Tab
@@ -3995,6 +4096,7 @@
                 Object.assign(result, {
                     type: 'vless', uuid: decodeURIComponent(credentials),
                     encryption: qp.get('encryption') || 'none',
+                    security: sec,
                     network: qp.get('type') || 'tcp',
                     tls: sec === 'tls' || sec === 'reality',
                     sni: qp.get('sni') || '', host: qp.get('host') || '',
@@ -4325,6 +4427,7 @@
                             port: parseInt(port) || 443,
                             uuid: uuid,
                             encryption: encryption,
+                            security: security,
                             tls: security === 'tls' || security === 'reality',
                             sni: sni,
                             flow: queryParams.get('flow') || '',
@@ -4651,6 +4754,7 @@
                         const realityOpts = item['reality-opts'] ? parseFlowObject(item['reality-opts']) : {};
                         nObj.pbk = stripQuotesHelper(realityOpts['public-key'] || realityOpts.publicKey || '');
                         nObj.sid = stripQuotesHelper(realityOpts['short-id'] || realityOpts.shortId || '');
+                        nObj.security = nObj.pbk ? 'reality' : (nObj.tls ? 'tls' : 'none');
                     } else {
                         nObj.cipher = stripQuotesHelper(item.cipher || 'auto');
                         nObj.alterId = parseInt(stripQuotesHelper(item.alterId || '0')) || 0;
@@ -5127,6 +5231,7 @@
                                 port: parseInt(serverInfo.port) || 443,
                                 uuid: user ? user.id : '',
                                 encryption: user ? (user.encryption || 'none') : 'none',
+                                security: stream.security || 'none',
                                 tls: stream.security === 'tls' || stream.security === 'reality',
                                 sni: tlsSettings.serverName || realitySettings.serverName || '',
                                 flow: user ? (user.flow || '') : '',
@@ -5229,6 +5334,8 @@
                     extraProps.flow = document.getElementById('man-vless-flow').value.trim();
                     extraProps.pbk = document.getElementById('man-vless-pbk').value.trim();
                     extraProps.sid = document.getElementById('man-vless-sid').value.trim();
+                    // 保真 security: 有 pbk 是 reality; 否则按 TLS 开关; 都不满足是 none
+                    extraProps.security = extraProps.pbk ? 'reality' : (extraProps.tls ? 'tls' : 'none');
                 } else {
                     extraProps.alterId = parseInt(document.getElementById('man-vmess-aid').value) || 0;
                     extraProps.cipher = document.getElementById('man-vmess-cipher').value || 'auto';
@@ -5416,6 +5523,16 @@
             if (!container) return;
             container.innerHTML = '';
 
+            if (typeof workspaceDataLoading !== 'undefined' && workspaceDataLoading) {
+                container.innerHTML = `
+                    <div class="data-skeleton-panel" aria-hidden="true">
+                        <div class="data-skeleton data-skeleton-line long"></div>
+                        <div class="data-skeleton data-skeleton-line medium"></div>
+                        <div class="data-skeleton data-skeleton-line short"></div>
+                    </div>`;
+                return;
+            }
+
             const topoGroups = orchestratedGroups();
             if (topoGroups.length === 0) {
                 const stash = groups.find(isStashGroup);
@@ -5524,9 +5641,10 @@
                 pYaml += `    server: ${n.server}\n`;
                 pYaml += `    port: ${n.port}\n`;
                 pYaml += `    uuid: ${n.uuid || n.user || ''}\n`;
-                pYaml += `    cipher: "${n.encryption || 'none'}"\n`;
+                pYaml += `    cipher: none\n`;
                 pYaml += `    tls: ${!!n.tls}\n`;
                 if (n.flow) pYaml += `    flow: ${n.flow}\n`;
+                if (n.encryption && n.encryption !== 'none') pYaml += `    encryption: "${n.encryption}"\n`;
                 if (n.sni) pYaml += `    servername: "${n.sni}"\n`;
                 if (n.clientFingerprint) pYaml += `    client-fingerprint: ${n.clientFingerprint}\n`;
                 pYaml += `    network: ${n.network || 'tcp'}\n`;
@@ -6081,7 +6199,8 @@
                 if (n.type === 'vless') {
                     const params = new URLSearchParams();
                     if (n.encryption) params.set('encryption', n.encryption);
-                    if (n.tls) params.set('security', n.flow ? 'reality' : 'tls');
+                    const security = n.security || (n.tls ? (n.flow ? 'reality' : 'tls') : '');
+                    if (security) params.set('security', security);
                     if (n.sni) params.set('sni', n.sni);
                     params.set('type', n.network || 'tcp');
                     if (n.host) params.set('host', n.host);
@@ -6203,6 +6322,7 @@
         let currentUser = null;        // { uuid, name, role }
         let impersonatedUuid = null;   // admin 当前正在查看的目标 uuid(null = 自己)
         let lastSubInfo = null;        // { subToken, urls: { clash, v2ray, groups: [...] } }
+        let workspaceDataLoading = true;
 
         async function apiFetch(path, opts = {}) {
             opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -6232,6 +6352,10 @@
         }
 
         async function bootstrapSession() {
+            if (document.body.dataset.embed === '1' || document.body.dataset.fromWorkbench === '1') {
+                switchTab('cloud-workspace');
+                renderSubscriptionPanel();
+            }
             try {
                 const me = await apiFetch('/api/me');
                 onLoggedIn(me);
@@ -6282,24 +6406,68 @@
 
         async function loadConfigFromServer() {
             const targetUuid = impersonatedUuid || currentUser.uuid;
+            workspaceDataLoading = true;
+            renderNodesTable();
+            renderTopology();
+            renderSubscriptionPanel();
+            refreshWorkbenchMetrics();
             try {
                 const data = await apiFetch('/api/config?uuid=' + encodeURIComponent(targetUuid));
                 if (data && data.config) {
                     applyServerConfig(data.config);
                 }
-                if (data && data.subscription) {
-                    lastSubInfo = data.subscription;
-                    renderSubscriptionPanel();
-                    if (document.body.dataset.embed === '1' || document.body.dataset.fromWorkbench === '1') {
-                        switchTab('cloud-workspace');
-                    }
-                } else {
-                    lastSubInfo = null;
-                    renderSubscriptionPanel();
+                lastSubInfo = data && data.subscription ? data.subscription : null;
+                workspaceDataLoading = false;
+                if (lastSubInfo && (document.body.dataset.embed === '1' || document.body.dataset.fromWorkbench === '1')) {
+                    switchTab('cloud-workspace');
                 }
+                hydrateWorkspaceRegions();
             } catch (e) {
                 console.warn('[loadConfig]', e);
+                workspaceDataLoading = false;
+                renderNodesTable();
+                renderTopology();
+                renderSubscriptionPanel();
+                refreshWorkbenchMetrics();
             }
+        }
+
+        function revealLoadedRegion(element) {
+            if (!element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            element.classList.remove('data-fade-in');
+            void element.offsetWidth;
+            element.classList.add('data-fade-in');
+            element.addEventListener('animationend', () => element.classList.remove('data-fade-in'), { once: true });
+        }
+
+        function hydrateWorkspaceRegions() {
+            const renderNodes = () => {
+                renderNodesTable();
+                setupTableDragDrop();
+                revealLoadedRegion(document.getElementById('stage-nodes'));
+            };
+            const renderTopologyRegion = () => {
+                renderTopology();
+                revealLoadedRegion(document.getElementById('topology-container'));
+            };
+            const renderSubscription = () => {
+                renderSubscriptionPanel();
+                revealLoadedRegion(document.getElementById('tab-cloud-workspace'));
+                refreshWorkbenchMetrics();
+            };
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                renderNodes();
+                renderTopologyRegion();
+                renderSubscription();
+                return;
+            }
+
+            renderNodes();
+            requestAnimationFrame(() => {
+                renderTopologyRegion();
+                window.setTimeout(renderSubscription, 55);
+            });
         }
 
         function applyServerConfig(cfg) {
@@ -6317,9 +6485,6 @@
                 document.getElementById('exit-bus-name-input').value = exitBusName;
                 document.getElementById('matrix-name-input').value = matrixName;
             }
-            renderNodesTable();
-            renderTopology();
-            setupTableDragDrop(); // 初始化拖拽排序
         }
 
         async function saveToCloud() {
@@ -6379,8 +6544,16 @@
         }
 
         function renderSubscriptionPanel() {
+            const loading = document.getElementById('sub-loading-state');
             const empty = document.getElementById('sub-status-empty');
             const area = document.getElementById('sub-links-area');
+            if (workspaceDataLoading) {
+                if (loading) loading.classList.remove('hidden');
+                empty.classList.add('hidden');
+                area.classList.add('hidden');
+                return;
+            }
+            if (loading) loading.classList.add('hidden');
             if (!lastSubInfo || !lastSubInfo.urls) {
                 empty.classList.remove('hidden');
                 area.classList.add('hidden');

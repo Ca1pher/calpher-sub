@@ -86,7 +86,10 @@ export function nodeToShareLink(n) {
         if (n.type === 'vless') {
             const params = new URLSearchParams();
             if (n.encryption) params.set('encryption', n.encryption);
-            if (n.tls) params.set('security', n.flow ? 'reality' : 'tls');
+            // 有 security 字段时透传原值(tls/reality/none),避免纯 TLS+flow 节点被误写成 reality;
+            // 老节点没有该字段时再按 tls+flow 推断
+            const security = n.security || (n.tls ? (n.flow ? 'reality' : 'tls') : '');
+            if (security) params.set('security', security);
             if (n.sni) params.set('sni', n.sni);
             params.set('type', n.network || 'tcp');
             if (n.host) params.set('host', n.host);
@@ -252,8 +255,10 @@ export function compileClashYaml(cfg) {
             } else if (n.type === 'vless') {
                 const uuid = n.uuid || n.user || '';
                 yaml += `  - name: ${name}\n    type: vless\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    uuid: ${uuid}\n    cipher: ${yamlEscape(n.encryption || 'none')}\n    tls: ${!!n.tls}\n`;
+                yaml += `    uuid: ${uuid}\n    cipher: none\n    tls: ${!!n.tls}\n`;
                 if (n.flow) yaml += `    flow: ${yamlEscape(n.flow)}\n`;
+                // 新版 vless 流式加密(mihomo 的 vless 出站读 encryption 字段,不认 cipher)
+                if (n.encryption && n.encryption !== 'none') yaml += `    encryption: ${yamlEscape(n.encryption)}\n`;
                 if (n.sni) yaml += `    servername: ${yamlEscape(n.sni)}\n`;
                 if (n.clientFingerprint) yaml += `    client-fingerprint: ${yamlEscape(n.clientFingerprint)}\n`;
                 yaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
