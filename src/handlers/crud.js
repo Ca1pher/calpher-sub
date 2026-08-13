@@ -37,8 +37,10 @@ function normalizeNodeInput(input, fallbackId) {
 }
 
 // 写回 config: 跑 dedup, 清理孤儿节点, 处理 compiledYaml (若调用者未传, 沿用旧的), 自动签 subToken
-async function persistConfig(env, uuid, user, rawSanitized, oldConfig) {
-    const deduped = dedupConfigAgainstExisting(rawSanitized, oldConfig, uuid);
+// opts.skipDedup 为 true 时跳过指纹去重(别名/优选IP 场景同一连接需要保留多个)
+async function persistConfig(env, uuid, user, rawSanitized, oldConfig, opts) {
+    const skipDedup = !!(opts && opts.skipDedup);
+    const deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, oldConfig, uuid);
 
     // 清理孤儿节点: 删除不属于任何分组的节点
     const referencedNodeIds = new Set();
@@ -124,7 +126,7 @@ export async function handleCreateNode(ctx) {
 
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: newNodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     // 去重后 incoming.id 可能被映射成已有节点的 id, 按指纹找回最终节点
     const fp = nodeFingerprint(node);
     const finalNode = (fp && sanitized.nodes.find(n => nodeFingerprint(n) === fp))
@@ -176,7 +178,7 @@ export async function handleBatchCreateNodes(ctx) {
 
     const { sanitized } = await persistConfig(env, r.uuid, r.user, {
         nodes: newNodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
 
     const created = sanitized.nodes.length - r.cfg.nodes.length;
     console.info('[crud] node-batch-create uuid=' + r.uuid + ' input=' + inputNodes.length + ' valid=' + validNodes.length + ' created=' + created);
@@ -197,7 +199,7 @@ export async function handleUpdateNode(ctx, nodeId) {
     newNodes[idx] = node;
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: newNodes, groups: r.cfg.groups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const fp = nodeFingerprint(node);
     const finalNode = sanitized.nodes.find(n => n.id === nodeId)
         || (fp && sanitized.nodes.find(n => nodeFingerprint(n) === fp))
@@ -219,7 +221,7 @@ export async function handleDeleteNode(ctx, nodeId) {
     }));
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: newNodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
     console.info('[crud] node-delete uuid=' + r.uuid + ' nodeId=' + nodeId);
     return json({ uuid: r.uuid, deleted: nodeId, subscription: sub });
@@ -274,7 +276,7 @@ export async function handleCreateGroup(ctx) {
     const newGroups = [...r.cfg.groups, group];
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: r.cfg.nodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
     console.info('[crud] group-create uuid=' + r.uuid + ' groupId=' + group.id + ' role=' + group.role);
     return json({ uuid: r.uuid, group, subscription: sub }, 201);
@@ -296,7 +298,7 @@ export async function handleUpdateGroup(ctx, groupId) {
     newGroups[idx] = group;
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: r.cfg.nodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
     console.info('[crud] group-update uuid=' + r.uuid + ' groupId=' + groupId);
     return json({ uuid: r.uuid, group, subscription: sub });
@@ -319,7 +321,7 @@ export async function handleDeleteGroup(ctx, groupId) {
         });
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: r.cfg.nodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
     console.info('[crud] group-delete uuid=' + r.uuid + ' groupId=' + groupId);
     return json({ uuid: r.uuid, deleted: groupId, subscription: sub });
@@ -345,7 +347,7 @@ export async function handleAddGroupNode(ctx, groupId, nodeId) {
 
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: r.cfg.nodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
     console.info('[crud] group-add-node uuid=' + r.uuid + ' groupId=' + groupId + ' nodeId=' + nodeId);
     return json({ uuid: r.uuid, group, subscription: sub });
@@ -366,7 +368,7 @@ export async function handleRemoveGroupNode(ctx, groupId, nodeId) {
     newGroups[gIdx] = group;
     const { sanitized, updatedUser } = await persistConfig(env, r.uuid, r.user, {
         nodes: r.cfg.nodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
-    }, r.cfg);
+    }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
     const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
     console.info('[crud] group-remove-node uuid=' + r.uuid + ' groupId=' + groupId + ' nodeId=' + nodeId);
     return json({ uuid: r.uuid, group, subscription: sub });

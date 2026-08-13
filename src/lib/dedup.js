@@ -8,6 +8,13 @@ export function nodeFingerprint(n) {
     let auth = '';
     if (t === 'vmess' || t === 'vless') {
         auth = (n.uuid || '').trim();
+        // 同一 CDN IP:port + 同一 uuid 的 ws 节点, 可能靠 host/sni/path 分发到不同后端,
+        // 不把这些路由字段纳入指纹会把真正不同的节点误合并 (用户实测 NL-1/USA-3 等被收成一份)。
+        // 浏览器端 index.html nodeFingerprint 有同样实现, 修改时两边要同步。
+        auth += '|' + (n.network || '').trim().toLowerCase()
+            + '|' + (n.sni || '').trim().toLowerCase()
+            + '|' + (n.host || '').trim().toLowerCase()
+            + '|' + String(n.path || '');
     } else if (t === 'ss' || t === 'shadowsocks') {
         auth = (n.cipher || '') + ':' + (n.pass || '');
         // 机场常用一对 SS 2022 密钥, 靠 plugin-opts 的 host/path 切到不同后端,
@@ -25,10 +32,17 @@ export function nodeFingerprint(n) {
             }
             auth += '|' + n.plugin + '|' + pluginHost + '|' + pluginPath;
         }
-    } else if (t === 'trojan' || t === 'hysteria2' || t === 'hy2') {
+    } else if (t === 'trojan') {
         auth = (n.pass || '');
+        // 与 vless 同理: ws trojan 的 host/sni/path 决定实际后端, 必须纳入指纹
+        auth += '|' + (n.network || '').trim().toLowerCase()
+            + '|' + (n.sni || '').trim().toLowerCase()
+            + '|' + (n.host || '').trim().toLowerCase()
+            + '|' + String(n.path || '');
+    } else if (t === 'hysteria2' || t === 'hy2') {
+        auth = (n.pass || '') + '|' + (n.sni || '').trim().toLowerCase();
     } else if (t === 'anytls') {
-        auth = (n.pass || '');
+        auth = (n.pass || '') + '|' + (n.sni || '').trim().toLowerCase();
     } else if (t === 'tuic') {
         auth = (n.uuid || '') + ':' + (n.pass || '');
         auth = (n.pass || '');
