@@ -4,6 +4,7 @@
 import { getUser, putUser, getConfig, putConfig, setSubToken } from '../lib/kv.js';
 import { randomToken } from '../lib/uuid.js';
 import { dedupConfigAgainstExisting, nodeFingerprint } from '../lib/dedup.js';
+import { nodesHash } from '../lib/subscription.js';
 import { buildSubscriptionView, resolveTargetUuid } from './config.js';
 import { json, badRequest, forbidden, notFound } from './_resp.js';
 
@@ -42,7 +43,7 @@ async function persistConfig(env, uuid, user, rawSanitized, oldConfig, opts) {
     const skipDedup = !!(opts && opts.skipDedup);
     const deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, oldConfig, uuid);
 
-    // 清理孤儿节点: 删除不属于任何分组的节点
+    // 清理孤儿节点: 删除不属于任何分组的节点(所见即所得: 清空分组即删除组成员)。
     const referencedNodeIds = new Set();
     for (const g of deduped.groups) {
         if (Array.isArray(g.nodes)) {
@@ -56,15 +57,22 @@ async function persistConfig(env, uuid, user, rawSanitized, oldConfig, opts) {
         console.info('[crud] orphan-cleanup uuid=' + uuid + ' removed=' + orphansRemoved + ' remaining=' + cleanedNodes.length);
     }
 
+    // 计算当前节点集的指纹,用于 clash 订阅端校验缓存时效
+    const nodeHash = await nodesHash(cleanedNodes);
     const sanitized = {
         nodes: cleanedNodes,
         groups: deduped.groups,
         busNames: rawSanitized.busNames,
         compiledYaml: rawSanitized.compiledYaml,
+        compiledNodesHash: nodeHash,
         updatedAt: Date.now(),
     };
+    // 复用旧 compiledYaml: 只有旧数据同时有 compiledYaml + compiledNodesHash,
+    // 且节点数据严格一致(按 hash)时才沿用 —— 否则 clash 会吐旧凭证、与 v2ray 分叉。
     if (sanitized.compiledYaml === undefined) {
-        if (oldConfig && oldConfig.compiledYaml) sanitized.compiledYaml = oldConfig.compiledYaml;
+        if (oldConfig && oldConfig.compiledYaml && oldConfig.compiledNodesHash === nodeHash) {
+            sanitized.compiledYaml = oldConfig.compiledYaml;
+        }
     }
     // 节点非空 -> 确保用户有 subToken
     let updatedUser = user;

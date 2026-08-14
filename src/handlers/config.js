@@ -62,7 +62,7 @@ export async function handleSaveConfig(ctx) {
     const old = await getConfig(env.CALPHER_KV, uuid);
     const deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, old, uuid);
 
-    // 清理孤儿节点: 删除不属于任何分组的节点
+    // 清理孤儿节点: 删除不属于任何分组的节点(所见即所得: 清空分组即删除组成员)。
     const referencedNodeIds = new Set();
     for (const g of deduped.groups) {
         if (Array.isArray(g.nodes)) {
@@ -90,10 +90,12 @@ export async function handleSaveConfig(ctx) {
     // compiledYaml 逻辑:
     //  - 传了内容 -> 直接用新值(浏览器每次保存都会重编译,必然新鲜)
     //  - 没传(空串/未定义) -> 只有"节点数据没变"时才允许复用旧缓存;
-    //    节点一旦变化,旧缓存必然失效必须丢弃,否则 clash 订阅会一直吐旧凭证(与 v2ray 订阅不一致)
+    //    节点一旦变化,旧缓存必然失效必须丢弃,否则 clash 订阅会一直吐旧凭证(与 v2ray 订阅不一致)。
+    //    严格按 compiledNodesHash 比对: 只有旧数据同时存在 compiledYaml + compiledNodesHash
+    //    且两者一致时才复用; 无 hash 的旧数据不信任缓存(避免 clash/v2ray 分叉)。
     if (!sanitized.compiledYaml && sanitized.compiledYaml !== '0') {
         const oldHash = old && old.compiledNodesHash;
-        if (old && old.compiledYaml && (oldHash == null || oldHash === nodeHash)) {
+        if (old && old.compiledYaml && oldHash != null && oldHash === nodeHash) {
             sanitized.compiledYaml = old.compiledYaml;
         }
     }
