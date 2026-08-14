@@ -1258,6 +1258,12 @@
                     if (['emerald', 'ocean', 'iris', 'amber', 'sakura'].includes(data.accent)) {
                         document.documentElement.setAttribute('data-accent', data.accent);
                     }
+                } else if (data.type === 'refresh') {
+                    if (typeof window.refreshWorkbenchEmbedData === 'function') {
+                        window.refreshWorkbenchEmbedData(data.requestId || '');
+                    } else {
+                        window.__calpherPendingEmbedRefresh = data.requestId || '';
+                    }
                 }
             });
         })();
@@ -6339,6 +6345,9 @@
         let impersonatedUuid = null;   // admin 当前正在查看的目标 uuid(null = 自己)
         let lastSubInfo = null;        // { subToken, urls: { clash, v2ray, groups: [...] } }
         let workspaceDataLoading = true;
+        let embedRefreshRunning = false;
+        let embedRefreshQueued = false;
+        let embedRefreshRequestId = '';
 
         async function apiFetch(path, opts = {}) {
             opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -6398,7 +6407,9 @@
                 document.getElementById('embed-admin-workspace').classList.remove('hidden');
             }
             refreshWorkbenchMetrics();
-            loadConfigFromServer();
+            const pendingRequestId = window.__calpherPendingEmbedRefresh || '';
+            window.__calpherPendingEmbedRefresh = '';
+            refreshWorkbenchEmbedData(pendingRequestId);
         }
 
         async function doLogin() {
@@ -6447,6 +6458,41 @@
                 refreshWorkbenchMetrics();
             }
         }
+
+        async function refreshWorkbenchEmbedData(requestId = '') {
+            if (requestId) embedRefreshRequestId = requestId;
+            if (!currentUser) {
+                embedRefreshQueued = true;
+                return;
+            }
+            if (embedRefreshRunning) {
+                embedRefreshQueued = true;
+                return;
+            }
+
+            embedRefreshRunning = true;
+            try {
+                do {
+                    embedRefreshQueued = false;
+                    await loadConfigFromServer();
+                    const adminTab = document.getElementById('tab-admin-workspace');
+                    if (currentUser.role === 'admin' && adminTab && !adminTab.classList.contains('hidden')) {
+                        await loadUsersList();
+                    }
+                } while (embedRefreshQueued);
+            } finally {
+                embedRefreshRunning = false;
+                if (document.body.dataset.embed === '1' && embedRefreshRequestId) {
+                    window.parent.postMessage({
+                        source: 'kypher-embed',
+                        type: 'refreshed',
+                        requestId: embedRefreshRequestId
+                    }, 'https://www.kypher72.indevs.in');
+                    embedRefreshRequestId = '';
+                }
+            }
+        }
+        window.refreshWorkbenchEmbedData = refreshWorkbenchEmbedData;
 
         function revealLoadedRegion(element) {
             if (!element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
