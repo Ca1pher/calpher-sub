@@ -57,6 +57,12 @@ async function persistConfig(env, uuid, user, rawSanitized, oldConfig, opts) {
         console.info('[crud] orphan-cleanup uuid=' + uuid + ' removed=' + orphansRemoved + ' remaining=' + cleanedNodes.length);
     }
 
+    // 浏览器编译的 compiledYaml 基于清理前的节点全量,一旦孤儿清理删了节点即失效,必须丢弃。
+    if (orphansRemoved > 0 && typeof rawSanitized.compiledYaml === 'string' && rawSanitized.compiledYaml !== '') {
+        rawSanitized.compiledYaml = undefined;
+        console.info('[crud] drop browser compiledYaml uuid=' + uuid + ' (stale: compiled before orphan-cleanup)');
+    }
+
     // 计算当前节点集的指纹,用于 clash 订阅端校验缓存时效
     const nodeHash = await nodesHash(cleanedNodes);
     const sanitized = {

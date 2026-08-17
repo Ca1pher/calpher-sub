@@ -76,6 +76,14 @@ export async function handleSaveConfig(ctx) {
         console.info('[config] orphan-cleanup uuid=' + uuid + ' removed=' + orphansRemoved + ' remaining=' + cleanedNodes.length);
     }
 
+    // 浏览器编译的 compiledYaml 是基于其内存中尚未清理的节点全量生成的;
+    // 一旦服务端孤儿清理真的删掉了节点,那份 YAML 必然包含了已删除的节点(如重名加 (1) 的残留),
+    // 与最终落库的 nodes 不一致,必须丢弃,由 clash 订阅端按当前节点重算。
+    if (orphansRemoved > 0 && typeof rawSanitized.compiledYaml === 'string' && rawSanitized.compiledYaml !== '') {
+        rawSanitized.compiledYaml = undefined;
+        console.info('[config] drop browser compiledYaml uuid=' + uuid + ' (stale: compiled before orphan-cleanup)');
+    }
+
     // 计算当前节点集的指纹,用于判断缓存 compiledYaml 是否仍有效
     const nodeHash = await nodesHash(cleanedNodes);
 

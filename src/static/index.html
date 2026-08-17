@@ -6580,8 +6580,12 @@
                     body: JSON.stringify(payload),
                 });
                 lastSubInfo = data.subscription || null;
+                // 服务端可能做了孤儿清理(清空分组即删成员),把清理后的真实状态回写浏览器,
+                // 保证后续编译基于与落库一致的节点集,避免残留旧节点再次混入 compiledYaml。
+                if (data.config) applyServerConfig(data.config);
                 renderSubscriptionPanel();
                 refreshStageRail();
+                renderNodesTable();
                 if (lastSubInfo) {
                     switchTab('cloud-workspace');
                     showToast('订阅已生成，请在这里选择订阅方式');

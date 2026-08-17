@@ -2,6 +2,27 @@ import { getSubTokenOwner, getUser, getConfig } from '../lib/kv.js';
 import { buildShareLinks, toBase64Sub, compileClashYaml, nodesHash } from '../lib/subscription.js';
 import { notFound, text } from './_resp.js';
 
+// 统计缓存 YAML 的 physical proxies 段中"物理节点"条数(跳过 ⛓️ 衍生节点与 proxy-groups 段)。
+// 若与当前 cfg.nodes 数量不一致,说明这份缓存是基于不同的(更大/更旧)节点集编译的,
+// 直接丢弃重算,防止 clash 订阅一直吐残留节点(如重名加 (1) 的旧缓存)。
+function physicalProxyCount(yaml) {
+    if (!yaml || typeof yaml !== 'string') return 0;
+    let count = 0;
+    let inProxies = false;
+    for (const line of yaml.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed === 'proxies:') { inProxies = true; continue; }
+        if (trimmed.startsWith('proxy-groups:')) break;
+        if (!inProxies) continue;
+        const m = trimmed.match(/^-\s+name:\s*(?:"([^"]*)"|'([^']*)'|([^\s#]+))/);
+        if (!m) continue;
+        const name = m[1] ?? m[2] ?? m[3] ?? '';
+        if (name.startsWith('⛓️')) continue;
+        count++;
+    }
+    return count;
+}
+
 // /sub/<token>/clash | /sub/<token>/v2ray | /sub/<token>/group/<groupId>
 // 公开访问 -- 不需要登录
 export async function handlePublicSubscription(env, request, path) {
@@ -37,6 +58,12 @@ export async function handlePublicSubscription(env, request, path) {
         } else {
             // 旧数据没有指纹: 沿用原逻辑信任缓存(等用户下一次保存写入新指纹)
             yaml = cfg.compiledYaml || '';
+        }
+        // 防御性兜底: 缓存里的物理节点条数与当前节点数不一致时,说明缓存基于不同的节点集
+        // (例如浏览器在孤儿清理前编译、服务端落库后清掉了孤儿节点),必须重算。
+        if (yaml && physicalProxyCount(yaml) !== (cfg.nodes || []).filter(n => !(n && typeof n.name === 'string' && n.name.startsWith('⛓️'))).length) {
+            console.info('[sub] cached compiledYaml proxy-count mismatch uuid=' + uuid + ' cached=' + physicalProxyCount(yaml) + ' nodes=' + cfg.nodes.length);
+            yaml = '';
         }
         // 旧缓存可能含 uuid: undefined 或 reality-opts 旧格式, 降级到服务端生成
         if (!yaml || yaml.includes('uuid: undefined') || yaml.includes('publicKey:') || yaml.includes('shortId:')) {
