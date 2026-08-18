@@ -60,7 +60,38 @@ export async function handleSaveConfig(ctx) {
     // 浏览器端保存时传 skipDedup:true 跳过(优选IP场景同一 server:port 可能是不同分配)
     const skipDedup = !!body.skipDedup;
     const old = await getConfig(env.CALPHER_KV, uuid);
-    const deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, old, uuid);
+    let deduped = skipDedup ? rawSanitized : dedupConfigAgainstExisting(rawSanitized, old, uuid);
+
+    // 合并模式(浏览器保存): 服务端已有、而本次提交"没见过"的旧节点/分组可能是
+    // 外部脚本(CRUD 推送)新加的, 整体替换会把它们抹掉。这里把旧内容补回,
+    // 只有浏览器本次会话显式删除过的(deletedNodeIds/deletedGroupIds 墓碑)才真正移除。
+    let mergePreserved = 0;
+    if (body.mergeWithExisting && old) {
+        const deletedNodeIds = new Set(Array.isArray(body.deletedNodeIds) ? body.deletedNodeIds : []);
+        const deletedGroupIds = new Set(Array.isArray(body.deletedGroupIds) ? body.deletedGroupIds : []);
+        const incomingNodeIds = new Set((deduped.nodes || []).map(n => n.id));
+        const incomingGroupIds = new Set((deduped.groups || []).map(g => g.id));
+
+        const mergedNodes = [...(deduped.nodes || [])];
+        for (const n of old.nodes || []) {
+            if (!incomingNodeIds.has(n.id) && !deletedNodeIds.has(n.id)) {
+                mergedNodes.push(n);
+                mergePreserved++;
+            }
+        }
+        const mergedGroups = [...(deduped.groups || [])];
+        for (const g of old.groups || []) {
+            if (!incomingGroupIds.has(g.id) && !deletedGroupIds.has(g.id)) {
+                mergedGroups.push(g);
+                mergePreserved++;
+            }
+        }
+        if (mergePreserved > 0) {
+            console.info('[config] merge-preserve uuid=' + uuid + ' preserved=' + mergePreserved +
+                ' oldNodes=' + (old.nodes || []).length + ' oldGroups=' + (old.groups || []).length);
+        }
+        deduped = { ...deduped, nodes: mergedNodes, groups: mergedGroups };
+    }
 
     // 清理孤儿节点: 删除不属于任何分组的节点(所见即所得: 清空分组即删除组成员)。
     const referencedNodeIds = new Set();
@@ -79,9 +110,15 @@ export async function handleSaveConfig(ctx) {
     // 浏览器编译的 compiledYaml 是基于其内存中尚未清理的节点全量生成的;
     // 一旦服务端孤儿清理真的删掉了节点,那份 YAML 必然包含了已删除的节点(如重名加 (1) 的残留),
     // 与最终落库的 nodes 不一致,必须丢弃,由 clash 订阅端按当前节点重算。
-    if (orphansRemoved > 0 && typeof rawSanitized.compiledYaml === 'string' && rawSanitized.compiledYaml !== '') {
-        rawSanitized.compiledYaml = undefined;
-        console.info('[config] drop browser compiledYaml uuid=' + uuid + ' (stale: compiled before orphan-cleanup)');
+    // 若合并保留了脚本新推、而浏览器没见过的节点/分组, 同样说明这份 YAML 基于更小的节点集,
+    // 也一并丢弃让订阅端重算。
+    if (orphansRemoved > 0 || mergePreserved > 0) {
+        if (typeof rawSanitized.compiledYaml === 'string' && rawSanitized.compiledYaml !== '') {
+            rawSanitized.compiledYaml = undefined;
+            console.info('[config] drop browser compiledYaml uuid=' + uuid +
+                (orphansRemoved > 0 ? ' (stale: orphan-cleanup removed=' + orphansRemoved + ')' : '') +
+                (mergePreserved > 0 ? ' (stale: merge preserved=' + mergePreserved + ')' : ''));
+        }
     }
 
     // 计算当前节点集的指纹,用于判断缓存 compiledYaml 是否仍有效

@@ -2570,6 +2570,10 @@
         let groups = [];
         let compiledYaml = "";
         let editingGroupId = null;
+        // 本次会话内被用户显式删除的节点/分组(墓碑)。保存时随请求提交,
+        // 服务端合并模式下据此区分"脚本新推、浏览器没见过"与"用户真的删了"。
+        let sessionDeletedNodeIds = new Set();
+        let sessionDeletedGroupIds = new Set();
 
         // ================= 未分组暂存区 (方案A) =================
         // g-default 不是普通业务组，而是"还没编排的节点"的暂存池：
@@ -3360,6 +3364,7 @@
             const names = ids.map(id => (nodes.find(n => n.id === id) || {}).name || id).slice(0, 3).join('、');
             const more = ids.length > 3 ? ` 等 ${ids.length} 个节点` : '';
             showCustomConfirm('删除确认', `确定删除 [${names}]${more} 吗?将从所有分组中同步移除。`, function() {
+                ids.forEach(id => sessionDeletedNodeIds.add(id));
                 nodes = nodes.filter(n => !ids.includes(n.id));
                 groups.forEach(g => { g.nodes = (g.nodes || []).filter(nid => !ids.includes(nid)); });
                 selectedNodeIds = selectedNodeIds.filter(id => !ids.includes(id));
@@ -3536,11 +3541,15 @@
             const targetName = activeGroupTab === 'all' ? "全表" : `分组 [${groups.find(g => g.id === activeGroupTab)?.name}]`;
             showCustomConfirm("清空确认", `确定清空 ${targetName} 中的所有物理代理节点吗？`, function() {
                 if (activeGroupTab === 'all') {
+                    nodes.forEach(n => sessionDeletedNodeIds.add(n.id));
                     nodes = [];
                     groups.forEach(g => { g.nodes = []; });
                 } else {
                     const group = groups.find(g => g.id === activeGroupTab);
-                    if (group) group.nodes = [];
+                    if (group) {
+                        group.nodes.forEach(nid => sessionDeletedNodeIds.add(nid));
+                        group.nodes = [];
+                    }
                 }
                 renderNodesTable();
                 renderTopology();
@@ -3571,6 +3580,7 @@
 
         // ================= 增删物理及逻辑分组 =================
         function deleteNode(id) {
+            sessionDeletedNodeIds.add(id);
             nodes = nodes.filter(n => n.id !== id);
             // 清理分组中的物理引用
             groups.forEach(g => {
@@ -3583,6 +3593,8 @@
 
         function triggerClearConfirm() {
             showCustomConfirm("危险操作确认", "确定一键注销当前工作区中所有的逻辑分组与物理代理吗？此操作无法恢复。", function() {
+                nodes.forEach(n => sessionDeletedNodeIds.add(n.id));
+                groups.forEach(g => sessionDeletedGroupIds.add(g.id));
                 nodes = [];
                 groups = [];
                 compiledYaml = "";
@@ -3821,6 +3833,7 @@
 
         function triggerGroupDeleteConfirm(id) {
             showCustomConfirm("注销确认", "确定注销该逻辑编排组吗？组内物理节点不会被删除。", function() {
+                sessionDeletedGroupIds.add(id);
                 groups = groups.filter(g => g.id !== id);
                 if (activeGroupTab === id) activeGroupTab = 'all';
                 closeGroupModal(); // 关闭弹窗
@@ -6535,6 +6548,10 @@
         function applyServerConfig(cfg) {
             nodes = Array.isArray(cfg.nodes) ? cfg.nodes : [];
             groups = Array.isArray(cfg.groups) ? cfg.groups : [];
+            // 服务器状态是新的基准: 之前会话内的删除墓碑一次性消费掉,
+            // 避免残留 tombstones 在后续保存时误删脚本新推的同 id 内容(理论上不会同 id,防御)。
+            sessionDeletedNodeIds.clear();
+            sessionDeletedGroupIds.clear();
             // 保留服务器上已有的 compiledYaml(避免覆盖为空)
             if (cfg.compiledYaml) compiledYaml = cfg.compiledYaml;
             if (cfg.busNames) {
@@ -6567,6 +6584,9 @@
             const targetUuid = impersonatedUuid || currentUser.uuid;
             const payload = {
                 skipDedup: true,
+                mergeWithExisting: true,
+                deletedNodeIds: [...sessionDeletedNodeIds],
+                deletedGroupIds: [...sessionDeletedGroupIds],
                 config: {
                     nodes, groups,
                     busNames: { master: masterControlName, entry: entryBusName, exit: exitBusName, matrix: matrixName },
