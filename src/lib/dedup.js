@@ -66,30 +66,41 @@ export function nodeFingerprint(n) {
 export function dedupConfigAgainstExisting(incoming, oldConfig, ownerUuid) {
     if (!incoming || !Array.isArray(incoming.nodes)) return incoming;
     const oldNodes = (oldConfig && Array.isArray(oldConfig.nodes)) ? oldConfig.nodes : [];
-    const fpToOld = new Map();
+    // 旧配置内部可能存在同指纹的多条节点(用户手动保留的重复,或脚本多次推送的别名)。
+    // 去重时必须以「旧配置存了多少份」为配额,逐份保留; 只对超出配额的真正新增部分
+    // 才做内部合并。否则脚本推送(把完整 config 原样传回)会把旧配置里已有的重复合并掉,
+    // 导致用户导入的 35 个节点默默变成 32 个。
+    const oldByFp = new Map();
     for (const n of oldNodes) {
         const fp = nodeFingerprint(n);
-        if (fp) fpToOld.set(fp, n);
+        if (!fp) continue;
+        if (!oldByFp.has(fp)) oldByFp.set(fp, []);
+        oldByFp.get(fp).push(n);
     }
     const idMap = {};
     let reused = 0;
-    const seenFp = new Set();
     const finalNodes = [];
+    // 真正新增节点(超出 old 配额)里同指纹的,统一指向第一个
+    const newFirstByFp = new Map();
     for (const inc of incoming.nodes) {
         const fp = nodeFingerprint(inc);
         if (!fp) {
             finalNodes.push(inc);
             continue;
         }
-        if (seenFp.has(fp)) {
-            // incoming 自己内部也重复了,统一指向第一个
-            const firstId = idMap[fp + '::first'];
-            if (firstId) idMap[inc.id] = firstId;
-            continue;
-        }
-        seenFp.add(fp);
-        if (fpToOld.has(fp)) {
-            const oldNode = fpToOld.get(fp);
+        const pool = oldByFp.get(fp);
+        if (pool && pool.length > 0) {
+            // 从旧配置配额里取一份:优先命中 id 完全相同的(就地编辑),
+            // 否则取剩余配额中的任意一份(贴合原有行为,并保留该份的原名)。
+            let idx = pool.findIndex(o => o.id === inc.id);
+            let oldNode = null;
+            if (idx !== -1) {
+                oldNode = pool[idx];
+                pool.splice(idx, 1);
+            } else {
+                oldNode = pool.shift();
+            }
+            oldByFp.set(fp, pool);
             // 区分两种命中场景:
             //  A) inc.id === oldNode.id:用户就地编辑同一节点(可能只改了名字/sni/plugin等
             //     不影响指纹的字段)。如果还把 name 覆写回旧值,用户的"改名"就保存失败了。
@@ -104,12 +115,16 @@ export function dedupConfigAgainstExisting(incoming, oldConfig, ownerUuid) {
                 console.info('[dedup] reuse old fp=' + fp.slice(0, 32) + ' uuid=' + (ownerUuid || '?') + ' incId=' + inc.id + ' -> oldId=' + oldNode.id);
             }
             idMap[inc.id] = oldNode.id;
-            idMap[fp + '::first'] = oldNode.id;
             finalNodes.push(merged);
             reused++;
+        } else if (newFirstByFp.has(fp)) {
+            // 旧配置里没有这一份 + incoming 内部同指纹重复 -> 合并到新增的第一个
+            const firstId = newFirstByFp.get(fp);
+            idMap[inc.id] = firstId;
         } else {
+            // 真正的新增节点
+            newFirstByFp.set(fp, inc.id);
             idMap[inc.id] = inc.id;
-            idMap[fp + '::first'] = inc.id;
             finalNodes.push(inc);
         }
     }
