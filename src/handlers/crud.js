@@ -128,6 +128,41 @@ export async function handleCreateNode(ctx) {
 
     // 允许 body.groupIds 指定要塞入的分组
     const groupIds = Array.isArray(body && body.groupIds) ? body.groupIds.filter(x => typeof x === 'string') : [];
+
+    // 按指纹去重: 已存在同指纹节点(server:port+认证)时复用, 不再追加新实体。
+    // 覆盖脚本重复推送场景(如定时签到每批同节点新建 id), 避免 config 无限膨胀。
+    const incomingFp = nodeFingerprint(node);
+    if (incomingFp) {
+        const existing = r.cfg.nodes.find(n => nodeFingerprint(n) === incomingFp);
+        if (existing) {
+            // 若目标组尚未包含该节点 id, 补进分组引用
+            let groupsChanged = false;
+            const newGroups = r.cfg.groups.map(g => {
+                if (groupIds.includes(g.id)) {
+                    const arr = Array.isArray(g.nodes) ? [...g.nodes] : [];
+                    if (!arr.includes(existing.id)) { arr.push(existing.id); groupsChanged = true; }
+                    return { ...g, nodes: arr };
+                }
+                return g;
+            });
+            let finalNode = existing;
+            let sanitized = r.cfg;
+            if (groupsChanged) {
+                const { sanitized: s, updatedUser } = await persistConfig(env, r.uuid, r.user, {
+                    nodes: r.cfg.nodes, groups: newGroups, busNames: r.cfg.busNames, compiledYaml: undefined,
+                }, r.cfg, { skipDedup: !!(ctx.body && ctx.body.skipDedup) });
+                sanitized = s;
+                finalNode = s.nodes.find(n => n.id === existing.id) || existing;
+                const sub = await buildSubscriptionView(env, request, updatedUser, sanitized);
+                console.info('[crud] node-create dedup-reuse uuid=' + r.uuid + ' nodeId=' + existing.id + ' type=' + existing.type + ' (into groups=' + groupIds.join(',') + ')');
+                return json({ uuid: r.uuid, node: finalNode, subscription: sub }, 201);
+            }
+            const sub = await buildSubscriptionView(env, request, r.user, sanitized);
+            console.info('[crud] node-create dedup-reuse uuid=' + r.uuid + ' nodeId=' + existing.id + ' type=' + existing.type + ' (already in groups, skip)');
+            return json({ uuid: r.uuid, node: finalNode, subscription: sub }, 200);
+        }
+    }
+
     const newNodes = [...r.cfg.nodes, node];
     const newGroups = r.cfg.groups.map(g => {
         if (groupIds.includes(g.id)) {
