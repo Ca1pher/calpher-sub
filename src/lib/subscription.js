@@ -208,6 +208,8 @@ export function toBase64Sub(lines) {
 }
 
 // 服务端 Clash YAML 生成 (compiledYaml 缓存为空时的降级方案)
+// 与前端 compileConfig() 对齐: 读取 cfg.groups / cfg.busNames, 生成完整编排
+// (总控/入口/落地/矩阵 系统组 + 用户分组 + auto 子组), 保证订阅不再退化为 Auto/Proxy。
 function yamlEscape(s) {
     if (s == null) return '';
     const str = String(s);
@@ -215,115 +217,302 @@ function yamlEscape(s) {
     return str;
 }
 
+function yq(s) {
+    return `"${String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+// 单个物理节点 -> clash proxy YAML (对齐前端 writeProxyYamlHelper)
+function writeServerProxy(n, pName, dialerProxyGroup) {
+    let pYaml = '';
+    const name = yq(pName);
+    if (n.type === 'socks' || n.type === 'socks5') {
+        pYaml += `  - name: ${name}\n    type: socks5\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        if (n.user) pYaml += `    username: ${yq(n.user)}\n`;
+        if (n.pass) pYaml += `    password: ${yq(n.pass)}\n`;
+    } else if (n.type === 'vmess') {
+        pYaml += `  - name: ${name}\n    type: vmess\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    uuid: ${n.uuid || n.user || ''}\n    alterId: ${n.alterId || 0}\n    cipher: ${yamlEscape(n.cipher || 'auto')}\n`;
+        pYaml += `    tls: ${!!n.tls}\n`;
+        if (n.sni) pYaml += `    servername: ${yq(n.sni)}\n`;
+        if (n.clientFingerprint) pYaml += `    client-fingerprint: ${yq(n.clientFingerprint)}\n`;
+        pYaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
+        if (n.network === 'ws') {
+            pYaml += `    ws-opts:\n      path: ${yq(n.path || '/')}\n`;
+            if (n.host || n.sni) pYaml += `      headers:\n        Host: ${yq(n.host || n.sni)}\n`;
+        }
+    } else if (n.type === 'vless') {
+        pYaml += `  - name: ${name}\n    type: vless\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    uuid: ${n.uuid || n.user || ''}\n    cipher: none\n    tls: ${!!n.tls}\n`;
+        if (n.flow) pYaml += `    flow: ${yq(n.flow)}\n`;
+        if (n.encryption && n.encryption !== 'none') pYaml += `    encryption: ${yq(n.encryption)}\n`;
+        if (n.sni) pYaml += `    servername: ${yq(n.sni)}\n`;
+        if (n.clientFingerprint) pYaml += `    client-fingerprint: ${yq(n.clientFingerprint)}\n`;
+        pYaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
+        if (n.pbk) {
+            pYaml += `    reality-opts:\n      public-key: ${yq(n.pbk)}\n`;
+            if (n.sid) pYaml += `      short-id: ${yq(n.sid)}\n`;
+        }
+        if (n.network === 'ws') {
+            pYaml += `    ws-opts:\n      path: ${yq(n.path || '/')}\n`;
+            if (n.host || n.sni) pYaml += `      headers:\n        Host: ${yq(n.host || n.sni)}\n`;
+        }
+    } else if (n.type === 'ss' || n.type === 'shadowsocks') {
+        const cipher = (n.cipher || 'aes-256-gcm').toLowerCase();
+        if (['ss','vmess','vless','trojan','ssr','tuic','hysteria2'].includes(cipher)) return pYaml;
+        pYaml += `  - name: ${name}\n    type: ss\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    cipher: ${yamlEscape(n.cipher || 'aes-256-gcm')}\n    password: ${yq(n.pass || '')}\n`;
+        if (n.plugin) {
+            pYaml += `    plugin: ${yamlEscape(n.plugin)}\n`;
+            if (n.pluginOpts) pYaml += `    plugin-opts: ${yamlEscape(n.pluginOpts)}\n`;
+        }
+    } else if (n.type === 'trojan') {
+        pYaml += `  - name: ${name}\n    type: trojan\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    password: ${yq(n.pass || '')}\n`;
+        if (n.sni) pYaml += `    sni: ${yq(n.sni)}\n`;
+        if (n.clientFingerprint) pYaml += `    client-fingerprint: ${yq(n.clientFingerprint)}\n`;
+        pYaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
+        if (n.network === 'ws') {
+            pYaml += `    ws-opts:\n      path: ${yq(n.path || '/')}\n`;
+            if (n.host || n.sni) pYaml += `      headers:\n        Host: ${yq(n.host || n.sni)}\n`;
+        }
+    } else if (n.type === 'hysteria2' || n.type === 'hy2') {
+        pYaml += `  - name: ${name}\n    type: hysteria2\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    password: ${yq(n.pass || '')}\n`;
+        pYaml += `    alpn: [${yamlEscape(n.alpn || 'h3')}]\n`;
+        if (n.sni) pYaml += `    sni: ${yq(n.sni)}\n`;
+        if (n.pinSHA256) pYaml += `    fingerprint: ${yq(n.pinSHA256)}\n`;
+        pYaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
+    } else if (n.type === 'tuic') {
+        pYaml += `  - name: ${name}\n    type: tuic\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    uuid: ${yamlEscape(n.uuid || '')}\n    password: ${yq(n.pass || '')}\n`;
+        pYaml += `    alpn: [${yamlEscape(n.alpn || 'h3')}]\n`;
+        if (n.sni) pYaml += `    sni: ${yq(n.sni)}\n`;
+        if (n.congestionControl) pYaml += `    congestion-controller: ${yamlEscape(n.congestionControl)}\n`;
+        pYaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
+    } else if (n.type === 'anytls') {
+        pYaml += `  - name: ${name}\n    type: anytls\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
+        pYaml += `    password: ${yq(n.pass || '')}\n`;
+        if (n.sni) pYaml += `    sni: ${yq(n.sni)}\n`;
+        if (n.clientFingerprint) pYaml += `    client-fingerprint: ${yq(n.clientFingerprint)}\n`;
+        if (n.udp) pYaml += `    udp: true\n`;
+        if (n.skipCertVerify) pYaml += `    skip-cert-verify: true\n`;
+    } else {
+        return pYaml;
+    }
+    if (dialerProxyGroup) {
+        pYaml += `    dialer-proxy: ${yq(dialerProxyGroup)}\n`;
+    }
+    return pYaml;
+}
+
 export function compileClashYaml(cfg) {
     const nodes = Array.isArray(cfg && cfg.nodes) ? cfg.nodes.filter(n => !(n && typeof n.name === 'string' && n.name.startsWith('⛓️'))) : [];
     if (nodes.length === 0) return '';
 
-    // 去重节点名: 同名加后缀 _1, _2 ...
-    const nameCount = {};
-    for (const n of nodes) {
-        const base = n.name || 'node';
-        if (nameCount[base] == null) { nameCount[base] = 0; continue; }
-        nameCount[base]++;
-        n._clashName = base + '_' + nameCount[base];
-    }
-    // 第一个同名的不加后缀, 从第二个开始
-    const firstSeen = {};
-    for (const n of nodes) {
-        const base = n.name || 'node';
-        if (!firstSeen[base]) { firstSeen[base] = true; n._clashName = base; }
-    }
+    // 与前端一致: 暂存区分组不参与编排
+    const groups = Array.isArray(cfg && cfg.groups) ? cfg.groups.filter(g => !(g && (g.id === 'g-default' || g.name === '默认分组'))) : [];
 
-    let yaml = '# Calpher Sub - Clash 配置 (服务端自动生成)\n\nport: 7890\nsocks-port: 7891\nallow-lan: false\nmode: rule\nlog-level: info\n\n';
+    // 系统组名字 (默认值对齐前端)
+    const MASTER_NAME = (cfg && cfg.busNames && cfg.busNames.master) || '🚀 核心主控选路';
+    const ENTRY_BUS_NAME = (cfg && cfg.busNames && cfg.busNames.entry) || '🛠️ 级联入口总线 (ENTRY)';
+    const EXIT_BUS_NAME = (cfg && cfg.busNames && cfg.busNames.exit) || '🛠️ 级联落地总线 (EXIT)';
+    const MATRIX_NAME = (cfg && cfg.busNames && cfg.busNames.matrix) || '🔗 动态组合链路 (MATRIX)';
+
+    // 1. 物理节点唯一名映射 (同名加 (1)(2) 后缀, 对齐前端)
+    const uniqueNamesMap = {};
+    const usedNames = new Set();
+    nodes.forEach(n => {
+        let baseName = (n.name || 'Node').trim();
+        let uniqueName = baseName;
+        let counter = 1;
+        while (usedNames.has(uniqueName)) {
+            uniqueName = `${baseName} (${counter})`;
+            counter++;
+        }
+        usedNames.add(uniqueName);
+        uniqueNamesMap[n.id] = uniqueName;
+    });
+
+    // 2. 用户分组 clash 名 (不与节点重名)
+    const groupClashNameMap = {};
+    const usedGroupNames = new Set(usedNames);
+    groups.forEach(g => {
+        let base = (g.name || 'Group').trim();
+        let unique = base;
+        let counter = 1;
+        while (usedGroupNames.has(unique)) {
+            unique = `${base} (${counter})`;
+            counter++;
+        }
+        usedGroupNames.add(unique);
+        groupClashNameMap[g.id] = unique;
+    });
+
+    // 3.1 relay 虚拟节点: ⛓️ <relayName> | <nodeName> + dialer-proxy -> entry 组
+    const relayVirtualNamesMap = {};
+    const relayVirtualProxiesYaml = [];
+    groups.forEach(g => {
+        if (g.role !== 'relay') return;
+        const entryG = groups.find(x => x.id === g.entryGroupId);
+        const exitG = groups.find(x => x.id === g.exitGroupId);
+        if (!entryG || !exitG) return;
+        const dialer = groupClashNameMap[entryG.id];
+        const list = [];
+        (exitG.nodes || []).forEach(nid => {
+            const n = nodes.find(x => x.id === nid);
+            if (!n) return;
+            const vName = `⛓️ ${g.name} | ${uniqueNamesMap[nid]}`;
+            list.push(vName);
+            relayVirtualProxiesYaml.push(writeServerProxy(n, vName, dialer));
+        });
+        relayVirtualNamesMap[g.id] = list;
+    });
+
+    // 3.2 exit 链式虚拟节点: dialer-proxy -> ENTRY 总线
+    const exitChainNamesMap = {};
+    const exitChainProxiesYaml = [];
+    groups.forEach(g => {
+        if (g.role !== 'exit') return;
+        const list = [];
+        (g.nodes || []).forEach(nid => {
+            const n = nodes.find(x => x.id === nid);
+            if (!n) return;
+            const vName = `⛓️ ${g.name} | ${uniqueNamesMap[nid]}`;
+            list.push(vName);
+            exitChainProxiesYaml.push(writeServerProxy(n, vName, ENTRY_BUS_NAME));
+        });
+        exitChainNamesMap[g.id] = list;
+    });
+
+    // 4. 组装
+    let yaml = '# Calpher Sub - Clash 配置 (服务端自动生成)\n';
+    yaml += '# 系统组带 # meta-system: 标识, 导入时自动跳过\n';
+    yaml += '# 用户分组带 # meta-clash-id / meta-role 等, 导入后 1:1 还原\n\n';
+    yaml += 'port: 7890\nsocks-port: 7891\nallow-lan: false\nmode: rule\nlog-level: info\nipv6: false\n\n';
+
     yaml += 'proxies:\n';
-    const exportedNames = new Set();
+    nodes.forEach(n => {
+        const pName = uniqueNamesMap[n.id];
+        if (!pName) return;
+        yaml += writeServerProxy(n, pName);
+    });
+    if (relayVirtualProxiesYaml.length > 0) {
+        yaml += `\n# --- relay 虚拟节点 (dialer-proxy -> 固定前置组) ---\n`;
+        relayVirtualProxiesYaml.forEach(s => { yaml += s; });
+    }
+    if (exitChainProxiesYaml.length > 0) {
+        yaml += `\n# --- exit 链式虚拟节点 (dialer-proxy -> 动态入口总线) ---\n`;
+        exitChainProxiesYaml.forEach(s => { yaml += s; });
+    }
 
-    for (const n of nodes) {
-        const name = yamlEscape(n._clashName || n.name || 'node');
-        try {
-            if (n.type === 'vmess') {
-                const uuid = n.uuid || n.user || '';
-                yaml += `  - name: ${name}\n    type: vmess\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    uuid: ${uuid}\n    alterId: ${n.alterId || 0}\n    cipher: ${yamlEscape(n.cipher || 'auto')}\n`;
-                yaml += `    tls: ${!!n.tls}\n`;
-                if (n.sni) yaml += `    servername: ${yamlEscape(n.sni)}\n`;
-                yaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
-                if (n.network === 'ws') {
-                    yaml += `    ws-opts:\n      path: ${yamlEscape(n.path || '/')}\n`;
-                    if (n.host || n.sni) yaml += `      headers:\n        Host: ${yamlEscape(n.host || n.sni)}\n`;
-                }
-            } else if (n.type === 'vless') {
-                const uuid = n.uuid || n.user || '';
-                yaml += `  - name: ${name}\n    type: vless\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    uuid: ${uuid}\n    cipher: none\n    tls: ${!!n.tls}\n`;
-                if (n.flow) yaml += `    flow: ${yamlEscape(n.flow)}\n`;
-                // 新版 vless 流式加密(mihomo 的 vless 出站读 encryption 字段,不认 cipher)
-                if (n.encryption && n.encryption !== 'none') yaml += `    encryption: ${yamlEscape(n.encryption)}\n`;
-                if (n.sni) yaml += `    servername: ${yamlEscape(n.sni)}\n`;
-                if (n.clientFingerprint) yaml += `    client-fingerprint: ${yamlEscape(n.clientFingerprint)}\n`;
-                yaml += `    network: ${yamlEscape(n.network || 'tcp')}\n`;
-                if (n.pbk) {
-                    yaml += `    reality-opts:\n`;
-                    yaml += `      public-key: ${yamlEscape(n.pbk)}\n`;
-                    if (n.sid) yaml += `      short-id: ${yamlEscape(n.sid)}\n`;
-                }
-                if (n.network === 'ws') {
-                    yaml += `    ws-opts:\n      path: ${yamlEscape(n.path || '/')}\n`;
-                    if (n.host || n.sni) yaml += `      headers:\n        Host: ${yamlEscape(n.host || n.sni)}\n`;
-                }
-            } else if (n.type === 'ss' || n.type === 'shadowsocks') {
-                const cipher = (n.cipher || 'aes-256-gcm').toLowerCase();
-                if (['ss','vmess','vless','trojan','ssr','tuic','hysteria2'].includes(cipher)) continue;
-                yaml += `  - name: ${name}\n    type: ss\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    cipher: ${yamlEscape(n.cipher || 'aes-256-gcm')}\n    password: ${yamlEscape(n.pass || '')}\n`;
-            } else if (n.type === 'trojan') {
-                yaml += `  - name: ${name}\n    type: trojan\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    password: ${yamlEscape(n.pass || '')}\n`;
-                if (n.sni) yaml += `    sni: ${yamlEscape(n.sni)}\n`;
-                yaml += `    skip-cert-verify: false\n`;
-            } else if (n.type === 'hysteria2' || n.type === 'hy2') {
-                yaml += `  - name: ${name}\n    type: hysteria2\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    password: ${yamlEscape(n.pass || '')}\n`;
-                yaml += `    alpn: [${yamlEscape(n.alpn || 'h3')}]\n`;
-                if (n.sni) yaml += `    sni: ${yamlEscape(n.sni)}\n`;
-                if (n.pinSHA256) yaml += `    fingerprint: ${yamlEscape(n.pinSHA256)}\n`;
-                yaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
-            } else if (n.type === 'tuic') {
-                yaml += `  - name: ${name}\n    type: tuic\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                yaml += `    uuid: ${yamlEscape(n.uuid || '')}\n    password: ${yamlEscape(n.pass || '')}\n`;
-                yaml += `    alpn: [${yamlEscape(n.alpn || 'h3')}]\n`;
-                if (n.sni) yaml += `    sni: ${yamlEscape(n.sni)}\n`;
-                if (n.congestionControl) yaml += `    congestion-controller: ${yamlEscape(n.congestionControl)}\n`;
-                yaml += `    skip-cert-verify: ${!!n.skipCertVerify}\n`;
-            } else if (n.type === 'socks' || n.type === 'socks5') {
-                yaml += `  - name: ${name}\n    type: socks5\n    server: ${yamlEscape(n.server)}\n    port: ${n.port}\n`;
-                if (n.user) yaml += `    username: ${yamlEscape(n.user)}\n`;
-                if (n.pass) yaml += `    password: ${yamlEscape(n.pass)}\n`;
+    yaml += `\nproxy-groups:\n`;
+
+    // 2.0 系统组
+    const exitGroupsArr = groups.filter(g => g.role === 'exit');
+    const entryGroups = groups.filter(g => g.role === 'entry');
+    const hasSpecialGroups = groups.some(g => g.role !== 'common');
+    const commonGroups = groups.filter(g => g.role === 'common');
+
+    if (hasSpecialGroups || commonGroups.length > 0) {
+        yaml += `  # meta-system: master\n`;
+        yaml += `  - name: ${yq(MASTER_NAME)}\n    type: select\n    proxies:\n`;
+        if (exitGroupsArr.length > 0) {
+            yaml += `      - ${yq(MATRIX_NAME)}\n`;
+        }
+        groups.forEach(g => {
+            if (g.role === 'exit') return;
+            yaml += `      - ${yq(groupClashNameMap[g.id])}\n`;
+        });
+        yaml += `      - "DIRECT"\n\n`;
+    }
+
+    if (entryGroups.length > 0 || exitGroupsArr.length > 0) {
+        yaml += `  # meta-system: entry-bus\n`;
+        yaml += `  - name: ${yq(ENTRY_BUS_NAME)}\n    type: select\n    proxies:\n`;
+        entryGroups.forEach(g => yaml += `      - ${yq(groupClashNameMap[g.id])}\n`);
+        yaml += `      - "DIRECT"\n\n`;
+    }
+
+    if (exitGroupsArr.length > 0) {
+        yaml += `  # meta-system: exit-bus\n`;
+        yaml += `  - name: ${yq(EXIT_BUS_NAME)}\n    type: select\n    proxies:\n`;
+        exitGroupsArr.forEach(g => yaml += `      - ${yq(groupClashNameMap[g.id])}\n`);
+        yaml += `      - "DIRECT"\n\n`;
+
+        yaml += `  # meta-system: matrix\n`;
+        yaml += `  - name: ${yq(MATRIX_NAME)}\n    type: select\n    hidden: true\n    proxies:\n`;
+        yaml += `      - ${yq(EXIT_BUS_NAME)}\n\n`;
+    }
+
+    // 2.1 用户分组
+    groups.forEach(g => {
+        const cname = groupClashNameMap[g.id];
+        if (!cname) return;
+
+        let mainMeta = '';
+        mainMeta += `  # meta-clash-id: ${g.id}\n`;
+        mainMeta += `  # meta-role: ${g.role || 'common'}\n`;
+        if (g.hideAutoSelect) mainMeta += `  # meta-hide-auto: true\n`;
+        if (g.allowIndividual) mainMeta += `  # meta-individual: true\n`;
+        if (g.entryGroupId) mainMeta += `  # meta-entry-id: ${g.entryGroupId}\n`;
+        if (g.exitGroupId) mainMeta += `  # meta-exit-id: ${g.exitGroupId}\n`;
+
+        if (g.role === 'relay') {
+            const vNames = relayVirtualNamesMap[g.id] || [];
+            yaml += mainMeta;
+            yaml += `  - name: ${yq(cname)}\n    type: select\n    proxies:\n`;
+            if (vNames.length === 0) {
+                yaml += `      - "DIRECT"\n`;
+            } else {
+                vNames.forEach(v => yaml += `      - ${yq(v)}\n`);
             }
-            exportedNames.add(name);
-        } catch (e) {
-            // skip malformed node
+        } else if (g.role === 'exit') {
+            const chainNames = exitChainNamesMap[g.id] || [];
+            if (chainNames.length === 0) chainNames.push('DIRECT');
+            if (chainNames[0] !== 'DIRECT') {
+                const chainAutoCname = `⚡auto-${cname}`;
+                yaml += `  # meta-chained-auto-of: ${g.id}\n`;
+                yaml += `  - name: ${yq(chainAutoCname)}\n    type: url-test\n    url: "http://www.gstatic.com/generate_204"\n    interval: 300\n    tolerance: 50\n    hidden: true\n    proxies:\n`;
+                chainNames.forEach(m => yaml += `      - ${yq(m)}\n`);
+                yaml += `\n`;
+                yaml += mainMeta;
+                yaml += `  - name: ${yq(cname)}\n    type: select\n    proxies:\n`;
+                yaml += `      - ${yq(chainAutoCname)}\n`;
+                chainNames.forEach(m => yaml += `      - ${yq(m)}\n`);
+            } else {
+                yaml += mainMeta;
+                yaml += `  - name: ${yq(cname)}\n    type: select\n    proxies:\n      - "DIRECT"\n`;
+            }
+        } else {
+            const memberNames = (g.nodes || []).map(nid => uniqueNamesMap[nid]).filter(Boolean);
+            if (memberNames.length === 0) memberNames.push('DIRECT');
+            const wantsAuto = (g.role === 'entry' || g.role === 'common') && memberNames[0] !== 'DIRECT';
+            if (wantsAuto) {
+                const autoName = `⚡auto-${cname}`;
+                yaml += `  # meta-auto-of: ${g.id}\n`;
+                yaml += `  - name: ${yq(autoName)}\n    type: url-test\n    url: "http://www.gstatic.com/generate_204"\n    interval: 300\n    tolerance: 50\n    hidden: true\n    proxies:\n`;
+                memberNames.forEach(m => yaml += `      - ${yq(m)}\n`);
+                yaml += `\n`;
+                yaml += mainMeta;
+                yaml += `  - name: ${yq(cname)}\n    type: select\n    proxies:\n`;
+                yaml += `      - ${yq(autoName)}\n`;
+                memberNames.forEach(m => yaml += `      - ${yq(m)}\n`);
+            } else {
+                yaml += mainMeta;
+                yaml += `  - name: ${yq(cname)}\n    type: select\n    proxies:\n`;
+                memberNames.forEach(m => yaml += `      - ${yq(m)}\n`);
+            }
         }
-    }
+        yaml += `\n`;
+    });
 
-    yaml += '\nproxy-groups:\n';
-    // Auto 优选组: 每 300 秒自动测速, 选延迟最低的
-    yaml += '  - name: Auto\n    type: url-test\n    url: http://www.gstatic.com/generate_204\n    interval: 300\n    tolerance: 50\n    proxies:\n';
-    for (const n of nodes) {
-        const nName = yamlEscape(n._clashName || n.name || 'node');
-        if (exportedNames.has(nName)) {
-            yaml += `      - ${nName}\n`;
-        }
+    // 3. 路由规则
+    yaml += `rules:\n`;
+    yaml += `  - GEOSITE,cn,DIRECT\n  - GEOIP,cn,DIRECT\n`;
+    if (hasSpecialGroups || commonGroups.length > 0) {
+        yaml += `  - MATCH,${MASTER_NAME}\n`;
+    } else {
+        yaml += `  - MATCH,DIRECT\n`;
     }
-    // 手动选择组, 包含 Auto + 所有节点
-    yaml += '  - name: Proxy\n    type: select\n    proxies:\n      - Auto\n';
-    for (const n of nodes) {
-        const nName = yamlEscape(n._clashName || n.name || 'node');
-        if (exportedNames.has(nName)) {
-            yaml += `      - ${nName}\n`;
-        }
-    }
-
-    yaml += '\nrules:\n  - MATCH,Proxy\n';
     return yaml;
 }
